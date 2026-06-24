@@ -1,0 +1,17 @@
+module Quilt
+
+# Singletons
+singleton DockEnums 1.0 DockEnums.qml
+singleton DockManager 1.0 DockManager.qml
+
+# Public components
+PanelModel 1.0 PanelModel.qml
+DockContainer 1.0 DockContainer.qml
+DockNode 1.0 DockNode.qml
+DockSplit 1.0 DockSplit.qml
+DockSlot 1.0 DockSlot.qml
+SplitHandle 1.0 SplitHandle.qml
+Panel 1.0 Panel.qml
+FloatingPanel 1.0 FloatingPanel.qml
+DockPreview 1.0 DockPreview.qml
+TabBar 1.0 TabBar.qml
