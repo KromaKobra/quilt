@@ -1,6 +1,6 @@
 pragma Singleton
 import QtQuick
-import Qt.labs.settings
+import QtCore
 
 /*!
     \qmltype DockManager
@@ -104,6 +104,13 @@ QtObject {
     /*! \internal Returns a unique id string with the given prefix. */
     function _nextId(prefix) { _idCounter += 1; return prefix + "_" + _idCounter; }
 
+    /*! \internal Advances the id counter past a restored node id so ids
+        generated after a restoreLayout never collide with restored ones. */
+    function _noteRestoredId(id) {
+        var m = /_(\d+)$/.exec(id);
+        if (m) _idCounter = Math.max(_idCounter, parseInt(m[1], 10));
+    }
+
     /*!
         \brief Creates a new SlotNode (leaf).
         \param panelIds ordered array of panel id strings to stack in the slot
@@ -194,30 +201,85 @@ QtObject {
         FloatingPanel repeater in DockContainer. */
     property var floatingPanelIds: []
 
+    /*! \internal slotId of the slot Center panels stack into. */
+    property string _centerSlotId: ""
+
     /*!
         \brief Adds a panel to the registry.
 
-        If the model is docked (\c{isFloating === false}) and does not yet appear
-        anywhere in the layout tree it is inserted so it is always visible: it
-        becomes the root slot when the tree is empty, otherwise it is stacked
-        into the first existing slot.
+        If the model is docked (\c{isFloating === false}), visible, and does not
+        yet appear anywhere in the layout tree, it is inserted according to its
+        \c dockPosition and \c splitRatio (see \l dockAtEdge). Panels whose
+        position is \c{DockEnums.Center} share one slot as a tab group; edge
+        panels split off the requested side of the current layout, in
+        registration order.
+
+        Panels that are already placed (e.g. by a manually built tree or a
+        restored layout) are left untouched.
         \param model the PanelModel to register
     */
     function registerPanel(model) {
         if (!model || !model.panelId) return;
-        panelRegistry[model.panelId] = model;
-        panelRegistry = panelRegistry; // re-assign to emit change
+        // Assign a fresh copy: re-assigning the same JS object would be elided
+        // as a no-op write and bindings on the registry would never refresh.
+        var reg = _copyRegistry();
+        reg[model.panelId] = model;
+        panelRegistry = reg;
 
-        if (!model.isFloating && !slotForPanel(model.panelId)) {
-            if (!layoutRoot) {
-                setRoot(createSlot([model.panelId], model.panelId));
-            } else {
-                var first = _firstSlot(layoutRoot);
-                if (first) stackPanel(first.slotId, model.panelId);
-                else setRoot(createSlot([model.panelId], model.panelId));
-            }
-        }
+        if (!model.isFloating && model.isVisible && !slotForPanel(model.panelId))
+            _insertByPosition(model);
         _refreshFloating();
+    }
+
+    /*! \internal Shallow-copies the registry so writes notify bindings. */
+    function _copyRegistry() {
+        var out = {};
+        for (var id in panelRegistry) out[id] = panelRegistry[id];
+        return out;
+    }
+
+    /*! \internal Inserts a docked panel into the tree at its dockPosition. */
+    function _insertByPosition(model) {
+        var pos = model.dockPosition !== undefined ? model.dockPosition : DockEnums.Center;
+        if (pos === DockEnums.Center) {
+            var center = _centerSlotId ? slotById(_centerSlotId) : null;
+            if (!center) center = _firstSlot(layoutRoot);
+            if (center) {
+                stackPanel(center.slotId, model.panelId);
+                _centerSlotId = center.slotId;
+            } else {
+                var slot = createSlot([model.panelId], model.panelId);
+                setRoot(slot);
+                _centerSlotId = slot.slotId;
+            }
+        } else {
+            dockAtEdge(model.panelId, pos, model.splitRatio);
+        }
+    }
+
+    /*!
+        \brief Docks a panel along one edge of the whole layout.
+
+        The current tree becomes one side of a new root split and the panel the
+        other, so e.g. \c{DockEnums.Bottom} produces a panel spanning the full
+        container width beneath everything else.
+        \param panelId panel to place (removed from its current slot first)
+        \param position DockEnums.Left / Right / Top / Bottom
+        \param ratio share of the container given to the new panel (0–1);
+               defaults to 0.5
+    */
+    function dockAtEdge(panelId, position, ratio) {
+        removeFromSlot(panelId);
+        var newSlot = createSlot([panelId], panelId);
+        if (!layoutRoot) { setRoot(newSlot); return; }
+        var r = (ratio === undefined || ratio <= 0 || ratio >= 1) ? 0.5 : ratio;
+        var axis = (position === DockEnums.Top || position === DockEnums.Bottom)
+                   ? "vertical" : "horizontal";
+        var before = (position === DockEnums.Left || position === DockEnums.Top);
+        var old = layoutRoot;
+        var split = before ? createSplit(axis, r, newSlot, old)
+                           : createSplit(axis, 1 - r, old, newSlot);
+        setRoot(split);
     }
 
     /*!
@@ -226,8 +288,9 @@ QtObject {
     */
     function unregisterPanel(panelId) {
         removeFromSlot(panelId);
-        delete panelRegistry[panelId];
-        panelRegistry = panelRegistry;
+        var reg = _copyRegistry();
+        delete reg[panelId];
+        panelRegistry = reg;
         _refreshFloating();
     }
 
@@ -467,17 +530,48 @@ QtObject {
 
         \a slotId is the stable id of the split's \e first child (a slotId for a
         leaf, or a nodeId for a nested split). Used live by SplitHandle and by
-        Panel edge resizing. The ratio is clamped to [0.1, 0.9]. This is not a
-        structural change, so the layout is not rebuilt — DockSplit reacts to the
-        ratio via binding for a smooth resize.
+        Panel edge resizing. This is not a structural change, so the layout is
+        not rebuilt — DockSplit reacts to the ratio via binding for a smooth
+        resize.
+
+        When \a lengthPx (the split's pixel extent along its axis) is supplied,
+        the ratio is clamped so neither subtree shrinks below the minimum
+        width/height of the panels it contains; otherwise a plain [0.1, 0.9]
+        clamp applies.
         \param slotId id of the split's first child
         \param ratio new ratio (0.0–1.0, clamped)
+        \param lengthPx optional pixel length of the split along its axis
     */
-    function setSplitRatio(slotId, ratio) {
+    function setSplitRatio(slotId, ratio, lengthPx) {
         var split = _splitByFirstChildId(slotId);
         if (!split) return;
-        split.ratio = Math.max(0.1, Math.min(0.9, ratio));
+        var lo = 0.1, hi = 0.9;
+        if (lengthPx !== undefined && lengthPx > 0) {
+            lo = Math.min(0.9, _minExtent(split.firstChild, split.axis) / lengthPx);
+            hi = Math.max(0.1, 1 - _minExtent(split.secondChild, split.axis) / lengthPx);
+            if (lo > hi) lo = hi = (lo + hi) / 2; // mins don't fit; pin centred
+        }
+        split.ratio = Math.max(lo, Math.min(hi, ratio));
         layoutChanged();
+    }
+
+    /*! \internal Minimum pixel extent of a subtree along \a axisStr, derived
+        from the registered panels' minWidth/minHeight. */
+    function _minExtent(node, axisStr) {
+        if (!node) return 0;
+        if (node.nodeType === "slot") {
+            var mx = 40; // hard floor so a slot can never collapse entirely
+            for (var i = 0; i < node.panelIds.length; ++i) {
+                var m = panelById(node.panelIds[i]);
+                if (!m) continue;
+                mx = Math.max(mx, axisStr === "horizontal" ? m.minWidth : m.minHeight);
+            }
+            return mx;
+        }
+        var a = _minExtent(node.firstChild, axisStr);
+        var b = _minExtent(node.secondChild, axisStr);
+        // Children stack along the queried axis only when the axes match.
+        return node.axis === axisStr ? a + b + 6 : Math.max(a, b);
     }
 
     // =========================================================================
@@ -503,7 +597,8 @@ QtObject {
     /*!
         \brief Docks a floating panel into the named slot (or stacks into it).
         \param panelId floating panel to dock
-        \param slotId destination slot; if empty, docks into the first slot
+        \param slotId destination slot; if empty, the panel is re-inserted
+               according to its \c dockPosition
         \param dropTarget Before/After/Stack
         \param axis split axis for Before/After
     */
@@ -511,7 +606,12 @@ QtObject {
         var m = panelById(panelId);
         if (!m) return;
         m.isFloating = false;
-        var target = slotId ? slotById(slotId) : _firstSlot(layoutRoot);
+        if (!slotId) {
+            _insertByPosition(m);
+            _refreshFloating();
+            return;
+        }
+        var target = slotById(slotId);
         if (!target) {
             setRoot(createSlot([panelId], panelId));
         } else if (dropTarget === DockEnums.Stack || dropTarget === undefined) {
@@ -530,6 +630,22 @@ QtObject {
         var m = panelById(panelId);
         if (m) m.isVisible = false;
         removeFromSlot(panelId);
+        _refreshFloating();
+    }
+
+    /*!
+        \brief Shows a previously hidden panel again.
+
+        A floating panel simply reappears at its last float geometry. A docked
+        panel that is no longer in the tree is re-inserted according to its
+        \c dockPosition / \c splitRatio.
+        \param panelId panel to show
+    */
+    function showPanel(panelId) {
+        var m = panelById(panelId);
+        if (!m) return;
+        m.isVisible = true;
+        if (!m.isFloating && !slotForPanel(panelId)) _insertByPosition(m);
         _refreshFloating();
     }
 
@@ -664,11 +780,8 @@ QtObject {
     //  Serialisation / persistence
     // =========================================================================
 
-    /*! \internal Persistent store for the saved layout JSON.
-
-        Uses Qt.labs.settings for the stated Qt 6.4 minimum. On Qt 6.5+ this
-        type is deprecated in favour of \c{Settings} from \c{import QtCore};
-        swap the import and this declaration if you target 6.5+ exclusively. */
+    /*! \internal Persistent store for the saved layout JSON (QtCore Settings,
+        available since Qt 6.5). */
     property Settings _store: Settings {
         category: "QuiltDockLayout"
         property string layoutJson: ""
@@ -722,14 +835,14 @@ QtObject {
             if (ids.length === 0) return null;
             var active = ids.indexOf(obj.activePanelId) >= 0 ? obj.activePanelId : ids[0];
             var slot = createSlot(ids, active);
-            if (obj.slotId) slot.slotId = obj.slotId;
+            if (obj.slotId) { slot.slotId = obj.slotId; _noteRestoredId(obj.slotId); }
             return slot;
         }
         var a = _deserializeNode(obj.first);
         var b = _deserializeNode(obj.second);
         if (a && b) {
             var split = createSplit(obj.axis, obj.ratio, a, b);
-            if (obj.nodeId) split.nodeId = obj.nodeId;
+            if (obj.nodeId) { split.nodeId = obj.nodeId; _noteRestoredId(obj.nodeId); }
             return split;
         }
         return a || b; // collapse if one side vanished
@@ -754,6 +867,7 @@ QtObject {
     /*! \internal Rebuilds full state from a serialisable object. */
     function _restore(obj) {
         if (!obj) return;
+        _centerSlotId = "";
         layoutRoot = _deserializeNode(obj.tree);
         if (layoutRoot) layoutRoot.parentNode = null;
         _applyPanelStates(obj.panels);

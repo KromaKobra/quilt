@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls
 
 /*!
-    \qmltype TabBar
+    \qmltype DockTabBar
     \inqmlmodule Quilt
     \brief Compact tab strip shown atop a \l DockSlot that stacks >1 panel.
 

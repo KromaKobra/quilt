@@ -21,19 +21,42 @@ Item {
     id: container
     anchors.fill: parent
 
+    /*! \brief Convenience list of PanelModels to register on startup. Each is
+        passed to \c{DockManager.registerPanel}, which places any unplaced,
+        docked panel according to its \c dockPosition / \c splitRatio. Panels
+        can equally be registered manually; this list is optional. */
+    property list<PanelModel> panels
+
+    /*! \brief When true (the default), a layout persisted by
+        \c{DockManager.saveLayout()} in a previous session is restored after
+        the \l panels list is registered. */
+    property bool autoRestoreLayout: true
+
     /*! \internal Map of slotId -> DockSlot item, used for drag hit-testing. */
     property var slotItems: ({})
 
     /*! \brief Registers a DockSlot's item for hit-testing. */
     function registerSlotItem(slotId, item) {
-        var m = slotItems; m[slotId] = item; slotItems = m;
+        var m = _copySlotItems(); m[slotId] = item; slotItems = m;
     }
     /*! \brief Removes a DockSlot's item registration. */
     function unregisterSlotItem(slotId) {
-        var m = slotItems; delete m[slotId]; slotItems = m;
+        var m = _copySlotItems(); delete m[slotId]; slotItems = m;
+    }
+    /*! \internal Fresh copy so writes notify bindings (a same-object
+        re-assignment is elided as a no-op). */
+    function _copySlotItems() {
+        var out = {};
+        for (var id in slotItems) out[id] = slotItems[id];
+        return out;
     }
 
-    Component.onCompleted: DockManager.rootItem = container
+    Component.onCompleted: {
+        DockManager.rootItem = container;
+        for (var i = 0; i < panels.length; ++i)
+            DockManager.registerPanel(panels[i]);
+        if (autoRestoreLayout) DockManager.loadPersisted();
+    }
 
     // Dock surface background.
     Rectangle {

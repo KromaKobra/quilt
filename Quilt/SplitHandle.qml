@@ -55,7 +55,7 @@ Item {
         onTranslationChanged: {
             if (!active || handle.splitLength <= 0) return;
             var delta = (handle.horizontal ? translation.x : translation.y) / handle.splitLength;
-            DockManager.setSplitRatio(handle.slotId, startRatio + delta);
+            DockManager.setSplitRatio(handle.slotId, startRatio + delta, handle.splitLength);
         }
     }
 }

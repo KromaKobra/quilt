@@ -2,10 +2,10 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Quilt is imported via a relative path so this example runs straight from the
-// source tree with e.g.  `qml quilt/example/main.qml`. When Quilt is installed
-// as a module on the import path you can instead write `import Quilt 1.0`.
-import "../"
+// Run from the repository root with the repo on the QML import path:
+//
+//     qml -I . example/main.qml
+import Quilt
 
 /*!
     Quilt demonstration.
@@ -196,5 +196,8 @@ ApplicationWindow {
     // ------------------------------------------------------------------------
     DockContainer {
         anchors.fill: parent
+        // This example builds its default tree and restores persistence itself
+        // (see Component.onCompleted above), so the automatic restore is off.
+        autoRestoreLayout: false
     }
 }

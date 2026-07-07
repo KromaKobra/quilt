@@ -7,7 +7,7 @@ import QtQuick
     \brief Renders a leaf (SlotNode) of the layout tree — a stacked tab group.
 
     The currently active panel is rendered via \l Panel. When the slot stacks
-    more than one panel a \l TabBar is shown across the top. During a drag, when
+    more than one panel a \l DockTabBar is shown across the top. During a drag, when
     this slot is the hovered target, a five-region drop indicator is drawn (a
     strip on each edge for split drops, plus the centre for a stack drop) and the
     slot's content animates inward to "make room" for the incoming panel so the
@@ -42,7 +42,7 @@ Item {
         DockManager.rootItem.unregisterSlotItem(slotId)
 
     // ---- tab strip ----
-    TabBar {
+    DockTabBar {
         id: tabs
         slotNode: slot.slotNode
         visible: slot.hasTabs

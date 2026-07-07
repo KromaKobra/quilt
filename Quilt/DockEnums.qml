@@ -54,4 +54,19 @@ QtObject {
         \value Stack   Add the dragged panel into the hovered slot's tab group.
     */
     enum DropTarget { Before, After, Stack }
+
+    /*!
+        \enum DockEnums::DockPosition
+        Declarative starting position of a panel, read by
+        \c{DockManager.registerPanel} when a panel is not already placed in the
+        layout tree (see \c{PanelModel.dockPosition}).
+
+        \value Left    Split off the left edge of the current layout.
+        \value Right   Split off the right edge.
+        \value Top     Split off the top edge.
+        \value Bottom  Split off the bottom edge.
+        \value Center  Join the central slot; multiple Center panels form a
+                       tab group.
+    */
+    enum DockPosition { Left, Right, Top, Bottom, Center }
 }

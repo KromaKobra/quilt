@@ -41,6 +41,17 @@ QtObject {
         also exposes a default \c content alias for direct, standalone use. */
     property Component contentComponent: null
 
+    /*! \brief Where the panel is initially docked when registered without
+        already being placed in the layout tree: one of
+        \c{DockEnums.Left / Right / Top / Bottom / Center}. Edge panels split
+        off that side of the layout in registration order; Center panels share
+        one slot as a tab group. Ignored once the panel is in the tree. */
+    property int dockPosition: DockEnums.Center
+
+    /*! \brief Share of the container (0–1, exclusive) given to this panel when
+        it is auto-placed at an edge via \l dockPosition. Ignored for Center. */
+    property real splitRatio: 0.5
+
     /*! \brief True when the panel floats freely inside the window; false when it
         is docked into the layout tree. There is deliberately no \c isDocked
         property — \c{isFloating === false} means docked. */
