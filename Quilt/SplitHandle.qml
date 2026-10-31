@@ -1,44 +1,32 @@
 import QtQuick
 
-/*!
-    \qmltype SplitHandle
-    \inqmlmodule Quilt
-    \brief Thin interactive bar between the two children of a \l DockSplit.
-
-    A DragHandler updates the owning split's ratio live by calling
-    \c{DockManager.setSplitRatio}. The ratio is clamped by DockManager to
-    [0.1, 0.9]. A subtle highlight appears on hover or while dragging.
-*/
+// The draggable boundary between two neighbours of a split. It only changes
+// those two neighbours and stops at their minimum/maximum sizes.
 Item {
     id: handle
 
-    /*! \brief Orientation of the split (DockEnums.Horizontal / Vertical). */
-    property int axis: DockEnums.Horizontal
+    required property string key                // "splitId:index"
+    required property var area
 
-    /*! \brief Stable id of the split's first child — identifies which split's
-        ratio to update (a slotId for a leaf, a nodeId for a nested split). */
-    property string slotId: ""
+    readonly property var info: area.geometry.handles[key]
+    readonly property bool horizontal: info ? info.horizontal : true
+    readonly property real thickness: Math.max(area.style.handleGrabSize,
+                                               info ? (horizontal ? info.width : info.height) : 0)
 
-    /*! \brief Current ratio of the owning split (bound by DockSplit). */
-    property real ratio: 0.5
+    visible: info !== undefined
+    x: !info ? 0 : horizontal ? info.x + (info.width - thickness) / 2 : info.x
+    y: !info ? 0 : horizontal ? info.y : info.y + (info.height - thickness) / 2
+    width: !info ? 0 : horizontal ? thickness : info.width
+    height: !info ? 0 : horizontal ? info.height : thickness
 
-    /*! \brief Pixel length of the split along its axis (excludes the handle). */
-    property real splitLength: 1
-
-    /*! \brief True while the handle is actively being dragged. */
-    readonly property bool dragging: drag.active
-
-    readonly property bool horizontal: axis === DockEnums.Horizontal
-
-    // Subtle highlight; brighter while hovered or dragging.
     Rectangle {
         anchors.centerIn: parent
         width: handle.horizontal ? 2 : parent.width
         height: handle.horizontal ? parent.height : 2
         radius: 1
-        color: DockManager.accentColor
-        opacity: drag.active ? 0.9 : (hover.hovered ? 0.5 : 0.0)
-        Behavior on opacity { NumberAnimation { duration: DockManager.animDuration; easing.type: Easing.OutCubic } }
+        color: handle.area.style.accent
+        opacity: drag.active ? 0.9 : (hover.hovered ? 0.45 : 0)
+        Behavior on opacity { NumberAnimation { duration: 120 } }
     }
 
     HoverHandler {
@@ -50,12 +38,17 @@ Item {
         id: drag
         target: null
         cursorShape: handle.horizontal ? Qt.SplitHCursor : Qt.SplitVCursor
-        property real startRatio: 0.5
-        onActiveChanged: if (active) startRatio = handle.ratio
-        onTranslationChanged: {
-            if (!active || handle.splitLength <= 0) return;
-            var delta = (handle.horizontal ? translation.x : translation.y) / handle.splitLength;
-            DockManager.setSplitRatio(handle.slotId, startRatio + delta, handle.splitLength);
+        xAxis.enabled: handle.horizontal
+        yAxis.enabled: !handle.horizontal
+        onActiveChanged: {
+            if (active)
+                handle.area.beginResize(handle.key);
+            else
+                handle.area.endResize();
+        }
+        onActiveTranslationChanged: {
+            if (active)
+                handle.area.resize(handle.horizontal ? activeTranslation.x : activeTranslation.y);
         }
     }
 }
