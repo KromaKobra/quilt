@@ -40,10 +40,10 @@ The defaults allow everything. Developers can restrict individual panels when th
 - **Rearrange by dragging tabs.** Drop a tab on any edge of another panel to split it, in the middle to add it as a tab, between tabs to reorder, or on the edge markers to dock along a whole side of the window. A live preview shows where the panel will land.
 - **Pop-out windows.** Drag a tab outside the window, or click its pop-out button. Pop-out windows accept docked panels exactly like the main window. They close themselves when emptied. Closing one sends its panels back to the main window.
 - **State is never lost.** A panel is created once and only re-parented as it moves. Text being edited, scroll positions, running animations and GPU views all survive every move.
-- **Resizing that respects limits.** Dragging a split handle changes only its two neighbours. Each panel's minimum and maximum size is honoured, including fixed sizes.
+- **Split lines that behave like lines.** Dragging the gap between panels moves the whole straight line, across every panel it borders, so in a four-quadrant layout the middle line resizes all four. Ctrl-drag moves just one segment. A segment dragged close to another snaps back into line and moves with it again. Each panel's minimum and maximum size is honoured, including fixed sizes.
 - **Maximize** any panel within its window (double-click the tab), then restore it.
 - **Save and restore** the whole arrangement, pop-out windows included, as readable JSON. Autosave is one property. Panels added in later versions of your app are placed sensibly instead of disappearing.
-- **Per-panel restrictions.** The `movable`, `floatable` and `closable` flags, plus `minimum*`/`maximum*` sizes.
+- **Per-panel restrictions.** The `movable`, `floatable`, `closable` and `tabbable` flags, plus `minimum*`/`maximum*` sizes. A panel that isn't tabbable keeps a group of its own, with a plain title bar.
 - **Themeable** through one `DockStyle` object. Transparent panels are supported.
 - **Works on Wayland, X11, Windows and macOS.** Dragging uses the platform's drag-and-drop, the only mechanism that crosses windows on Wayland.
 
@@ -54,7 +54,7 @@ You need Qt 6.8 or newer (developed against 6.12). From the repository root:
 ```sh
 qml6 -I . examples/minimal.qml      # the snippet above, runnable
 qml6 -I . examples/sandbox.qml      # every feature, with stateful panels to test against
-./run-tests.sh                      # lint + 63 headless tests
+./run-tests.sh                      # lint + 83 headless tests
 ```
 
 The `qml` runtime may be called `qml6` or `qml`, or it may only exist in Qt's bin directory (`qmake6 -query QT_INSTALL_BINS`). [docs/testing.md](docs/testing.md) covers this.
@@ -78,7 +78,7 @@ Quilt/              the module — copy this folder into your project
   Dock.qml            public: enums (Dock.Left, Dock.ReturnPanels, ...)
   DockManager.qml     internal: shared state, windows, drag session, persistence
   DockStack.qml       internal: a tab group
-  SplitHandle.qml     internal: resize handle
+  SplitHandles.qml    internal: split lines (hover, drag, snapping)
   LayoutTree.js       internal: the layout model (pure functions)
   CMakeLists.txt      optional: build as a compiled QML module
 examples/           minimal.qml, sandbox.qml, cpp-host/ (CMake + C++ app)

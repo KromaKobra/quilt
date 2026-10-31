@@ -191,19 +191,6 @@ Item {
         for (let i = stackModel.count - 1; i >= 0; --i)
             if (!want[stackModel.get(i).stackId])
                 stackModel.remove(i);
-
-        const keys = Tree.handleKeys(root);
-        const wantKeys = {};
-        keys.forEach(k => { wantKeys[k] = true; });
-        const haveKeys = {};
-        for (let i = handleModel.count - 1; i >= 0; --i) {
-            const k = handleModel.get(i).key;
-            if (wantKeys[k])
-                haveKeys[k] = true;
-            else
-                handleModel.remove(i);
-        }
-        keys.forEach(k => { if (!haveKeys[k]) handleModel.append({ key: k }); });
     }
 
     function _placePanels() {
@@ -237,19 +224,82 @@ Item {
     }
 
     // ---- split handles ----
+    //
+    // Handles that continue each other in a straight line move together (see
+    // LayoutTree "Lines of split handles"). `independent` (Ctrl) moves only
+    // the segment under the cursor and turns snapping off.
 
-    function beginResize(key) {
-        const h = geometry.handles[key];
-        if (!h)
-            return;
-        _resizeState = Tree.beginResize(root, geometry, h.splitId, h.index, _options());
-        resizing = true;
+    // The handle under (x, y), or "".
+    function handleAt(x, y) {
+        return Tree.handleAt(geometry, x, y, style.handleGrabSize);
     }
 
-    function resize(delta) {
-        if (!_resizeState)
+    // Rects to highlight for a hover at (x, y) over handle `key`.
+    function handleHighlight(key, independent, x, y) {
+        const h = key ? geometry.handles[key] : null;
+        if (!h)
+            return [];
+        if (independent)
+            return [Tree.segmentAt(root, geometry, key, h.horizontal ? y : x)];
+        return Tree.linkedHandles(geometry, key, { gap: style.gap }).map(k => geometry.handles[k]);
+    }
+
+    // Starts dragging the handle line at (x, y). Returns false if there is
+    // no handle there.
+    function beginResize(x, y, independent) {
+        let key = handleAt(x, y);
+        if (!key)
+            return false;
+        if (independent) {
+            const isolated = Tree.isolateSegment(root, geometry, key);
+            if (isolated) {
+                mutate(() => isolated, false);
+                key = handleAt(x, y);
+            }
+        }
+        const keys = independent ? [key] : Tree.linkedHandles(geometry, key, { gap: style.gap });
+        const opts = _options();
+        const states = keys.map(k => {
+            const h = geometry.handles[k];
+            return Tree.beginResize(root, geometry, h.splitId, h.index, opts);
+        }).filter(st => !!st);
+        if (!states.length)
+            return false;
+        const h = geometry.handles[key];
+        _resizeState = {
+            keys: keys,
+            states: states,
+            horizontal: h.horizontal,
+            origin: h.horizontal ? h.x + h.width / 2 : h.y + h.height / 2,
+            candidates: Tree.snapCandidates(geometry, keys, { gap: style.gap }),
+            snapKey: ""
+        };
+        resizing = true;
+        return true;
+    }
+
+    // `translation` is how far the pointer moved since the press. With
+    // `snap`, the line jumps onto a handle it is about to continue.
+    function resize(translation, snap) {
+        const r = _resizeState;
+        if (!r)
             return;
-        Tree.applyResize(_resizeState, delta);
+        const range = Tree.lineRange(r.states);
+        let d = Math.min(range[1], Math.max(range[0], r.horizontal ? translation.x : translation.y));
+        r.snapKey = "";
+        if (snap) {
+            const raw = d;
+            let best = style.snapDistance + 0.001;
+            r.candidates.forEach(c => {
+                const to = c.pos - r.origin;
+                if (Math.abs(to - raw) < best && to >= range[0] && to <= range[1]) {
+                    best = Math.abs(to - raw);
+                    d = to;
+                    r.snapKey = c.key;
+                }
+            });
+        }
+        Tree.applyLineResize(r.states, d);
         _geometryRevision += 1;
     }
 
@@ -294,7 +344,8 @@ Item {
             indicatorSize: style.dropIndicatorSize,
             indicatorInset: 8,
             edgeFraction: p.areaSize,
-            tabIndexAt: (id, lx) => _stackItems[id] ? _stackItems[id].tabIndexAt(lx) : -1
+            tabIndexAt: (id, lx) => _stackItems[id] ? _stackItems[id].tabIndexAt(lx) : -1,
+            canTab: id => Tree.canJoin(Tree.findStack(root, id), p.panelId, manager.canShare)
         });
         if (t === null)
             return;                             // over a gap: keep the current target
@@ -415,12 +466,10 @@ Item {
         }
     }
 
-    Repeater {
-        model: ListModel { id: handleModel }
-        delegate: SplitHandle {
-            area: area
-            z: 2
-        }
+    SplitHandles {
+        area: area
+        anchors.fill: parent
+        z: 2
     }
 
     // Drop preview: where the dragged panel will land.

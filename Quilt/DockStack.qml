@@ -4,7 +4,9 @@ import QtQuick.Controls
 import QtQuick.Shapes
 
 // One tab group of a DockArea: a tab bar plus the content host that the
-// group's panels are parented into (only the current one is visible).
+// group's panels are parented into (only the current one is visible). A
+// panel that can't share a group (tabbable: false) gets a plain title bar
+// instead of tabs.
 Item {
     id: stack
 
@@ -18,6 +20,7 @@ Item {
     readonly property var currentPanel: manager ? manager.panel(currentId) : null
     readonly property int currentIndex: panelIds.indexOf(currentId)
     readonly property bool maximized: area.maximizedStackId === stackId
+    readonly property bool solo: !!currentPanel && !currentPanel.tabbable && panelIds.length === 1
     readonly property var rect: area.geometry.rects[stackId]
     property alias contentHost: host
 
@@ -136,6 +139,7 @@ Item {
         id: tabScroll
         anchors { left: parent.left; right: buttons.visible ? buttons.left : parent.right; top: parent.top; leftMargin: 2 }
         height: stack.style.tabHeight
+        visible: !stack.solo
         contentWidth: tabRow.width
         contentHeight: height
         interactive: false
@@ -261,6 +265,66 @@ Item {
         }
     }
 
+    // Title bar of a solo (non-tabbable) panel: same gestures as a tab.
+    Item {
+        id: titleBar
+        anchors { left: parent.left; right: buttons.visible ? buttons.left : parent.right; top: parent.top }
+        height: stack.style.tabHeight
+        visible: stack.solo
+        readonly property bool hasIcon: !!stack.currentPanel && stack.currentPanel.icon.toString() !== ""
+
+        Image {
+            id: titleIcon
+            visible: titleBar.hasIcon
+            source: stack.currentPanel ? stack.currentPanel.icon : ""
+            anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
+            width: 14
+            height: 14
+            sourceSize: Qt.size(28, 28)
+            fillMode: Image.PreserveAspectFit
+        }
+
+        Text {
+            anchors {
+                left: titleBar.hasIcon ? titleIcon.right : parent.left
+                leftMargin: titleBar.hasIcon ? 6 : 10
+                right: parent.right
+                rightMargin: 6
+                verticalCenter: parent.verticalCenter
+            }
+            text: stack.currentPanel ? stack.currentPanel.title : ""
+            elide: Text.ElideRight
+            color: stack.style.text
+            font.pixelSize: stack.style.fontPixelSize
+        }
+
+        TapHandler {
+            gesturePolicy: TapHandler.DragThreshold
+            onPressedChanged: if (pressed) stack.select(stack.currentId)
+            onDoubleTapped: stack.manager.toggleMaximized(stack.currentId)
+        }
+
+        TapHandler {
+            acceptedButtons: Qt.MiddleButton
+            onTapped: if (stack.currentPanel.closable) stack.currentPanel.close()
+        }
+
+        TapHandler {
+            acceptedButtons: Qt.RightButton
+            onTapped: (eventPoint) => {
+                tabMenu.panelId = stack.currentId;
+                tabMenu.popup(titleBar, eventPoint.position.x, eventPoint.position.y);
+            }
+        }
+
+        DragHandler {
+            id: titleDrag
+            target: null
+            enabled: stack.solo && stack.currentPanel.movable && !stack._resetDrag
+            onActiveChanged: if (active) stack.beginTabDrag(stack.currentPanel, titleDrag)
+        }
+    }
+
     Row {
         id: buttons
         anchors { right: parent.right; rightMargin: 4; top: parent.top; topMargin: 1 }
@@ -284,6 +348,14 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             visible: stack.maximized || stack.area.stackCount > 1
             onClicked: stack.manager.toggleMaximized(stack.currentId)
+        }
+        IconButton {
+            style: stack.style
+            glyph: "close"
+            tip: "Close"
+            anchors.verticalCenter: parent.verticalCenter
+            visible: stack.solo && stack.currentPanel.closable
+            onClicked: stack.currentPanel.close()
         }
     }
 

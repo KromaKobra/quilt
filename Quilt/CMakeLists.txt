@@ -15,7 +15,7 @@ if(QT_KNOWN_POLICY_QTP0001)
     qt_policy(SET QTP0001 NEW)      # resources under :/qt/qml, on the default import path
 endif()
 
-set_source_files_properties(DockManager.qml DockStack.qml SplitHandle.qml
+set_source_files_properties(DockManager.qml DockStack.qml SplitHandles.qml
     PROPERTIES QT_QML_INTERNAL_TYPE TRUE)
 
 qt_add_library(quilt STATIC)
@@ -30,7 +30,7 @@ qt_add_qml_module(quilt
         DockWindow.qml
         DockManager.qml
         DockStack.qml
-        SplitHandle.qml
+        SplitHandles.qml
         LayoutTree.js
 )
 

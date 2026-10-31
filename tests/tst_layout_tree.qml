@@ -303,6 +303,151 @@ TestCase {
         compare(l2.rects[root.children[0].id].width, 50);      // stopped by a's minimum
     }
 
+    // ---- panels that can't share a tab group ---------------------------------
+
+    function soloTools(id) { return id !== "tools"; }
+
+    function test_solo_panel_never_joins_a_group() {
+        let root = Tree.placeByHint(null, "outliner", { side: "left", canShare: soloTools });
+        root = Tree.placeByHint(root, "tools", { side: "left", group: ["outliner", "tools"], canShare: soloTools });
+        compare(shape(root), "row(tabs[tools*],tabs[outliner*])");
+        // ...and nobody joins it: the next Left panel tabs with the outliner.
+        root = Tree.placeByHint(root, "layers", { side: "left", group: ["tools", "outliner", "layers"], canShare: soloTools });
+        compare(shape(root), "row(tabs[tools*],tabs[outliner,layers*])");
+    }
+
+    function test_solo_centre_panel_splits_the_largest_stack() {
+        let root = Tree.parse({ tabs: ["viewport"] });
+        root = Tree.placeByHint(root, "tools", { side: "center", canShare: soloTools });
+        compare(shape(root), "row(tabs[viewport*],tabs[tools*])");
+        // Centre panels skip the solo stack when looking for the largest.
+        root = Tree.placeByHint(Tree.parse({ row: [ { tabs: ["tools"], size: 0.8 }, { tabs: ["a"] } ] }), "b",
+                                { side: "center", canShare: soloTools });
+        compare(shape(root), "row(tabs[tools*],tabs[a,b*])");
+    }
+
+    function test_tab_drop_on_solo_becomes_split() {
+        let root = Tree.parse({ row: [ { tabs: ["tools"] }, { tabs: ["a", "b"] } ] });
+        root = Tree.applyDrop(root, "b", { kind: "tab", stackId: Tree.findStackOf(root, "tools").id, index: -1 }, soloTools);
+        compare(shape(root), "row(tabs[tools*],tabs[b*],tabs[a*])");
+    }
+
+    function test_separate_solo_from_json() {
+        const root = Tree.separateSolo(Tree.parse({ tabs: ["a", "tools", "b"] }), soloTools);
+        compare(shape(root), "row(tabs[a*,b],tabs[tools*])");
+    }
+
+    function test_hit_test_on_solo_stack_always_splits() {
+        const root = Tree.parse({ row: [ { tabs: ["tools"] }, { tabs: ["b"] } ] });
+        const l = Tree.computeLayout(root, 800, 600, { gap: 0 });
+        const opts = { tabHeight: 30, canTab: id => id !== root.children[0].id, tabIndexAt: () => 0 };
+        let t = Tree.hitTest(root, l, 800, 600, 200, 300, opts);        // centre of the solo stack
+        compare(t.kind, "split");
+        t = Tree.hitTest(root, l, 800, 600, 200, 10, opts);             // its header
+        compare([t.kind, t.side], ["split", "top"]);
+        t = Tree.hitTest(root, l, 800, 600, 600, 300, opts);            // the other stack still tabs
+        compare(t.kind, "tab");
+    }
+
+    // ---- lines of split handles ------------------------------------------------
+
+    // 2x2 grid as two rows: the middle vertical line is two handles.
+    function gridRows() {
+        return Tree.parse({ column: [ { row: [ { tabs: ["a"] }, { tabs: ["b"] } ] },
+                                      { row: [ { tabs: ["c"] }, { tabs: ["d"] } ] } ] });
+    }
+
+    // The same grid as two columns: the middle vertical line is one handle.
+    function gridColumns() {
+        return Tree.parse({ row: [ { column: [ { tabs: ["a"] }, { tabs: ["c"] } ] },
+                                   { column: [ { tabs: ["b"] }, { tabs: ["d"] } ] } ] });
+    }
+
+    function verticalHandles(l) {
+        return Object.keys(l.handles).filter(k => l.handles[k].horizontal).sort();
+    }
+
+    function test_handle_at() {
+        const root = gridRows();
+        const l = Tree.computeLayout(root, 804, 604, { gap: 4 });
+        const top = root.children[0].id + ":0";
+        compare(Tree.handleAt(l, 401, 100, 8), top);
+        compare(Tree.handleAt(l, 405, 100, 8), top);                    // within the grab area
+        compare(Tree.handleAt(l, 420, 100, 8), "");
+        compare(Tree.handleAt(l, 200, 301, 8), root.id + ":0");
+    }
+
+    function test_aligned_handles_form_one_line() {
+        const root = gridRows();
+        const l = Tree.computeLayout(root, 804, 604, { gap: 4 });
+        const v = verticalHandles(l);
+        compare(v.length, 2);
+        compare(Tree.linkedHandles(l, v[0], { gap: 4 }).sort(), v);
+        compare(Tree.linkedHandles(l, root.id + ":0", { gap: 4 }), [root.id + ":0"]);
+        // Side-by-side handles of one row are parallel, not one line.
+        const three = Tree.parse({ row: [ { tabs: ["a"] }, { tabs: ["b"] }, { tabs: ["c"] } ] });
+        const l3 = Tree.computeLayout(three, 900, 600, { gap: 0 });
+        compare(Tree.linkedHandles(l3, three.id + ":0", { gap: 0 }), [three.id + ":0"]);
+    }
+
+    function test_misaligned_handles_are_snap_candidates() {
+        const root = gridRows();
+        root.children[0].children[0].size = 0.45;
+        root.children[0].children[1].size = 0.55;
+        const l = Tree.computeLayout(root, 804, 604, { gap: 4 });
+        const top = root.children[0].id + ":0", bottom = root.children[1].id + ":0";
+        compare(Tree.linkedHandles(l, top, { gap: 4 }), [top]);
+        const c = Tree.snapCandidates(l, [top], { gap: 4 });
+        compare(c.length, 1);
+        compare(c[0].key, bottom);
+        compare(c[0].pos, l.handles[bottom].x + 2);
+    }
+
+    function test_line_resize_moves_together_and_stops_together() {
+        const mins = { a: 100, b: 0, c: 0, d: 300 };
+        const opts = { gap: 0, constraints: id => ({ minimumWidth: mins[id], minimumHeight: 0,
+                                                     maximumWidth: Infinity, maximumHeight: Infinity }) };
+        const root = gridRows();
+        const l = Tree.computeLayout(root, 800, 600, opts);
+        const states = verticalHandles(l).map(k => Tree.beginResize(root, l, l.handles[k].splitId, l.handles[k].index, opts));
+        compare(Tree.lineRange(states), [-300, 100]);                   // a's minimum / d's minimum
+        compare(Tree.applyLineResize(states, 250), 100);
+        const l2 = Tree.computeLayout(root, 800, 600, opts);
+        verify(Math.abs(l2.rects[Tree.findStackOf(root, "a").id].width - 500) <= 1);
+        verify(Math.abs(l2.rects[Tree.findStackOf(root, "c").id].width - 500) <= 1);
+    }
+
+    function test_isolate_segment_restructures_but_keeps_geometry() {
+        const root = gridColumns();
+        const l = Tree.computeLayout(root, 804, 604, { gap: 4 });
+        const key = root.id + ":0";
+        compare(Tree.sharedCuts(root, l, key).length, 1);
+        const seg = Tree.segmentAt(root, l, key, 100);
+        compare([seg.y, seg.height], [0, 302]);
+        const before = {};
+        ["a", "b", "c", "d"].forEach(p => before[p] = JSON.stringify(l.rects[Tree.findStackOf(root, p).id]));
+
+        const out = Tree.isolateSegment(root, l, key);
+        compare(shape(out), "column(row(tabs[a*],tabs[b*]),row(tabs[c*],tabs[d*]))");
+        const l2 = Tree.computeLayout(out, 804, 604, { gap: 4 });
+        ["a", "b", "c", "d"].forEach(p => compare(JSON.stringify(l2.rects[Tree.findStackOf(out, p).id]), before[p]));
+    }
+
+    function test_isolate_segment_with_partial_cuts() {
+        let root = Tree.parse({ row: [ { column: [ { tabs: ["a"], size: 0.5 }, { tabs: ["c"], size: 0.25 }, { tabs: ["e"] } ] },
+                                       { column: [ { tabs: ["b"], size: 0.5 }, { tabs: ["d"] } ] } ] });
+        const l = Tree.computeLayout(root, 800, 800, { gap: 0 });
+        root = Tree.isolateSegment(root, l, root.id + ":0");
+        compare(shape(root), "column(row(tabs[a*],tabs[b*]),row(column(tabs[c*],tabs[e*]),tabs[d*]))");
+    }
+
+    function test_isolate_segment_without_cuts_returns_null() {
+        const root = gridRows();
+        const l = Tree.computeLayout(root, 800, 600, { gap: 0 });
+        compare(Tree.isolateSegment(root, l, root.children[0].id + ":0"), null);
+        compare(shape(root), "column(row(tabs[a*],tabs[b*]),row(tabs[c*],tabs[d*]))");
+    }
+
     // ---- hit testing ---------------------------------------------------------
 
     function test_hit_test_zones() {

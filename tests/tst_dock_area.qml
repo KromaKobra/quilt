@@ -39,6 +39,20 @@ Item {
         DockPanel { title: "Late" }
     }
 
+    // Four plain panels for split-line tests, plus a non-tabbable one.
+    Component {
+        id: gridComponent
+        DockArea {
+            anchors.fill: parent
+            style.animationDuration: 0
+            DockPanel { panelId: "a"; title: "A" }
+            DockPanel { panelId: "b"; title: "B" }
+            DockPanel { panelId: "c"; title: "C" }
+            DockPanel { panelId: "d"; title: "D" }
+            DockPanel { panelId: "tools"; title: "Tools"; area: Dock.Left; tabbable: false; openOnStart: false }
+        }
+    }
+
     TestCase {
         id: test
         name: "DockArea"
@@ -371,6 +385,112 @@ Item {
             area.panel("viewport").minimumWidth = 500;
             compare(area.minimumWidth, minW - 120 + 500);
             compare(stackRect("viewport").width >= 500, true);
+        }
+
+        // ---- panels that can't share a tab group ----------------------------
+
+        function test_non_tabbable_panel_gets_its_own_group_and_title_bar() {
+            const g = createTemporaryObject(gridComponent, root, { defaultLayout: { row: [ { tabs: ["a", "b"] }, { tabs: ["c", "d"] } ] } });
+            g.openPanel("tools");
+            compare(stackOf("tools", g).panels, ["tools"]);
+            const s = g._stackItems[stackOf("tools", g).id];
+            verify(s.solo);
+            verify(!g._stackItems[stackOf("a", g).id].solo);
+
+            // Dropping another panel on its middle (or header) splits instead.
+            const m = g.manager;
+            const r = stackRect("tools", g);
+            m.beginDrag(g.panel("a"), g);
+            g.dragMoved(r.x + r.width / 2, r.y + 10);
+            compare(g._target.kind, "split");
+            g.clearDragState();
+            m.finishDrag(Qt.IgnoreAction);
+
+            // ...and it never joins another group, even through the API.
+            m.movePanel("tools", g, { kind: "tab", stackId: stackOf("c", g).id, index: -1 });
+            compare(stackOf("tools", g).panels, ["tools"]);
+            compare(stackOf("c", g).panels, ["c", "d"]);
+        }
+
+        function test_restore_separates_non_tabbable_panels() {
+            const g = createTemporaryObject(gridComponent, root);
+            verify(g.restoreLayout({ version: 1, main: { tabs: ["a", "tools", "b"] }, windows: [], closed: ["c", "d"] }));
+            compare(shape(g.root), "row(tabs[a*,b],tabs[tools*])");
+        }
+
+        // ---- split lines -----------------------------------------------------
+
+        readonly property var gridRows: ({ column: [ { row: [ { tabs: ["a"] }, { tabs: ["b"] } ] },
+                                                     { row: [ { tabs: ["c"] }, { tabs: ["d"] } ] } ] })
+        readonly property var gridColumns: ({ row: [ { column: [ { tabs: ["a"] }, { tabs: ["c"] } ] },
+                                                     { column: [ { tabs: ["b"] }, { tabs: ["d"] } ] } ] })
+
+        function grid(layout) {
+            return createTemporaryObject(gridComponent, root, { defaultLayout: layout });
+        }
+
+        function widthOf(g, id) { return stackRect(id, g).width; }
+        function heightOf(g, id) { return stackRect(id, g).height; }
+
+        // Press at (x, y), move by (dx, dy) in two steps, release.
+        function dragLine(g, x, y, dx, dy, modifiers) {
+            mousePress(g, x, y, Qt.LeftButton, modifiers);
+            mouseMove(g, x + dx / 2, y + dy / 2, -1, Qt.LeftButton, modifiers);
+            mouseMove(g, x + dx, y + dy, -1, Qt.LeftButton, modifiers);
+            mouseRelease(g, x + dx, y + dy, Qt.LeftButton, modifiers);
+            verify(!g.resizing);
+        }
+
+        // 1200 wide, gap 4: the middle vertical line is centred at x = 600.
+        function test_aligned_segments_move_as_one_line() {
+            const g = grid(gridRows);
+            compare([widthOf(g, "a"), widthOf(g, "c")], [598, 598]);
+            dragLine(g, 600, 200, 100, 0, Qt.NoModifier);
+            compare([widthOf(g, "a"), widthOf(g, "c")], [698, 698]);
+            compare([widthOf(g, "b"), widthOf(g, "d")], [498, 498]);
+        }
+
+        function test_ctrl_moves_only_the_segment() {
+            const g = grid(gridRows);
+            dragLine(g, 600, 200, 100, 0, Qt.ControlModifier);
+            compare([widthOf(g, "a"), widthOf(g, "c")], [698, 598]);
+        }
+
+        function test_ctrl_breaks_a_full_length_handle() {
+            const g = grid(gridColumns);
+            // Without Ctrl the single handle moves the whole line.
+            dragLine(g, 600, 200, 50, 0, Qt.NoModifier);
+            compare([widthOf(g, "a"), widthOf(g, "c")], [648, 648]);
+            // With Ctrl only the top part moves; the tree is re-shaped.
+            dragLine(g, 650, 200, 50, 0, Qt.ControlModifier);
+            compare(g.root.type, "column");
+            compare([widthOf(g, "a"), widthOf(g, "c")], [698, 648]);
+            compare([heightOf(g, "a"), heightOf(g, "c")], [398, 398]);
+        }
+
+        function test_horizontal_line_across_columns_moves_as_one() {
+            const g = grid(gridColumns);                  // two handles, one per column, at y = 400
+            dragLine(g, 300, 400, 0, 80, Qt.NoModifier);
+            compare([heightOf(g, "a"), heightOf(g, "b")], [478, 478]);
+            dragLine(g, 900, 480, 0, -40, Qt.ControlModifier);
+            compare([heightOf(g, "a"), heightOf(g, "b")], [478, 438]);
+        }
+
+        function test_close_segments_snap_and_then_link() {
+            const g = grid(gridRows);
+            dragLine(g, 600, 200, 6, 0, Qt.ControlModifier);      // misalign the top by 6 px
+            compare([widthOf(g, "a"), widthOf(g, "c")], [604, 598]);
+            dragLine(g, 600, 600, 3, 0, Qt.NoModifier);           // bottom comes within snap distance
+            compare([widthOf(g, "a"), widthOf(g, "c")], [604, 604]);
+            dragLine(g, 606, 600, -50, 0, Qt.NoModifier);         // now they move together
+            compare([widthOf(g, "a"), widthOf(g, "c")], [554, 554]);
+        }
+
+        function test_ctrl_drag_does_not_snap() {
+            const g = grid(gridRows);
+            dragLine(g, 600, 200, 6, 0, Qt.ControlModifier);
+            dragLine(g, 600, 600, 3, 0, Qt.ControlModifier);
+            compare([widthOf(g, "a"), widthOf(g, "c")], [604, 601]);
         }
     }
 }

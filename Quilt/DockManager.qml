@@ -118,8 +118,14 @@ QtObject {
             side: sides[p.area] || "center",
             fraction: p.areaSize,
             group: panelOrder.filter(id => panels[id].area === p.area),
-            activate: activate
+            activate: activate,
+            canShare: canShare
         };
+    }
+
+    // Whether a panel may share a tab group (DockPanel.tabbable).
+    function canShare(panelId) {
+        return !panels[panelId] || panels[panelId].tabbable;
     }
 
     function canFloat(p) {
@@ -137,7 +143,7 @@ QtObject {
         if (area) {
             area.setCurrent(panelId);
         } else {
-            area = areas.find(a => p._lastStackId && Tree.findStack(a.root, p._lastStackId)) || null;
+            area = areas.find(a => Tree.canJoin(Tree.findStack(a.root, p._lastStackId), panelId, canShare)) || null;
             if (area)
                 area.mutate(root => Tree.insertTab(root, p._lastStackId, panelId, -1, true));
             else {
@@ -183,7 +189,7 @@ QtObject {
         const src = areaOf(panelId);
         if (src && src !== area)
             src.mutate(root => Tree.removePanel(root, panelId));
-        area.mutate(root => Tree.applyDrop(root, panelId, target));
+        area.mutate(root => Tree.applyDrop(root, panelId, target, canShare));
         activePanel = p;
         raiseArea(area);
     }
@@ -394,9 +400,9 @@ QtObject {
             claimed[id] = true;
             return true;
         };
-        let main = Tree.parse(s.main, claim);
+        let main = Tree.separateSolo(Tree.parse(s.main, claim), canShare);
         (s.windows || []).forEach(w => {
-            const root = Tree.parse(w.layout, id => !!panels[id] && panels[id].floatable && claim(id));
+            const root = Tree.separateSolo(Tree.parse(w.layout, id => !!panels[id] && panels[id].floatable && claim(id)), canShare);
             if (!root)
                 return;
             const win = mainArea.allowPopOut ? createWindow(w) : null;
@@ -426,7 +432,7 @@ QtObject {
             claimed[id] = true;
             return true;
         };
-        let root = mainArea.defaultLayout ? Tree.parse(mainArea.defaultLayout, claim) : null;
+        let root = Tree.separateSolo(mainArea.defaultLayout ? Tree.parse(mainArea.defaultLayout, claim) : null, canShare);
         const centre = panelOrder.filter(id => panels[id].area === Dock.Center);
         const edges = panelOrder.filter(id => panels[id].area !== Dock.Center);
         centre.concat(edges).forEach(id => {

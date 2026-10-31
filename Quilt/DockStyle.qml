@@ -21,6 +21,7 @@ QtObject {
     property real radius: 6                     // corner radius of each panel
     property real tabHeight: 30
     property real handleGrabSize: 8             // grab width of split handles, even when gap is 0
+    property real snapDistance: 10              // a dragged split line snaps onto one this close
     property real dropIndicatorSize: 36         // the "dock at full edge" squares shown while dragging
     property int fontPixelSize: 12
     property int animationDuration: 160         // 0 disables layout animations

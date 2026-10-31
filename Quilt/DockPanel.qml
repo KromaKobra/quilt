@@ -29,6 +29,8 @@ Item {
     property bool movable: true                 // can be dragged to a new place
     property bool floatable: true               // can live in a pop-out window
     property bool closable: true                // shows a close button
+    property bool tabbable: true                // can share a tab group; false gives it its
+                                                // own group with a plain title bar
     property real minimumWidth: 120
     property real minimumHeight: 80
     property real maximumWidth: Number.POSITIVE_INFINITY

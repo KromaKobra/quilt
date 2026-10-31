@@ -8,6 +8,7 @@ This guide takes you from an empty window to a fully dockable tool UI. A complet
 - [3. Declaring panels](#3-declaring-panels)
 - [4. The starting layout](#4-the-starting-layout)
 - [5. Restricting panels](#5-restricting-panels)
+- [5b. Resizing and split lines](#5b-resizing-and-split-lines)
 - [6. Controlling panels from code](#6-controlling-panels-from-code)
 - [7. Saving and restoring layouts](#7-saving-and-restoring-layouts)
 - [8. Pop-out windows](#8-pop-out-windows)
@@ -199,6 +200,7 @@ DockPanel {
     movable: false        // can't be dragged; other panels can still dock around it
     floatable: false      // never lives in a pop-out window
     closable: false       // no close button; closing its pop-out window brings it home
+    tabbable: false       // never shares a tab group; gets a plain title bar
     minimumWidth: 56      // the defaults are 120 x 80
     maximumWidth: 56      // min == max gives a fixed width
 }
@@ -209,12 +211,27 @@ DockPanel {
 | `movable` | `true` | `false`: the tab can't be dragged |
 | `floatable` | `true` | `false`: no pop-out button. Pop-out windows refuse it, and dropping it outside the window does nothing |
 | `closable` | `true` | `false`: no close button or menu item |
+| `tabbable` | `true` | `false`: the panel always has a group of its own. It shows a plain title bar instead of a tab (same drag, double-click and right-click gestures, no tab highlight). Panels dropped on it split it instead of joining, it never joins another group, and other panels with the same `area` hint don't tab with it |
 | `minimumWidth`, `minimumHeight` | `120`, `80` | Resizing stops here. Window minimums account for it |
 | `maximumWidth`, `maximumHeight` | infinite | Resizing stops here. Set min == max for a fixed size |
 
 Size limits apply to the panel's content area; the tab bar comes on top of that. A tab group uses the strictest limits of its panels.
 
+Use `tabbable: false` for panels whose size limits or role don't fit in a group, such as a fixed-width tool strip. Otherwise their limits would apply to every panel tabbed with them. A saved or default layout that puts such a panel in a group is split apart when it is loaded.
+
 To disable pop-out windows for the whole app, set `DockArea.allowPopOut: false` on the main area.
+
+## 5b. Resizing and split lines
+
+The gaps between panels are split lines. Dragging one resizes the panels on either side. Each panel's minimum and maximum size is respected, and the line stops as soon as any panel reaches its limit.
+
+**Lines move as a whole.** Picture four panels, one per quadrant. The middle vertical line runs the full height of the window, even though it borders two panels on each side. Dragging it, at the top or the bottom, changes the widths of all four panels together. The middle horizontal line works the same way for the heights. This is true however the layout was built, whether as two rows or as two columns.
+
+**Ctrl-drag moves one segment.** Hold Ctrl when you press on the line to move only the part next to the cursor. In the example, Ctrl-dragging the top half of the vertical line resizes just the top two panels and leaves the bottom two as they were.
+
+**Segments snap back together.** When a line (dragged without Ctrl) comes within `style.snapDistance` pixels (default 10) of a segment that continues it, it snaps into alignment. From then on the two move as one line again. Hold Ctrl during the drag to place a line precisely, without snapping.
+
+Hovering a line highlights everything that a drag from there would move. Hold Ctrl while hovering to see the single segment instead.
 
 ## 6. Controlling panels from code
 
@@ -394,6 +411,7 @@ DockArea {
 | `radius` | `6` | Panel corner radius |
 | `tabHeight` | `30` | Tab bar height |
 | `handleGrabSize` | `8` | Grab width of split handles (even when `gap` is 0) |
+| `snapDistance` | `10` | How close a dragged split line must get to snap onto a segment it continues |
 | `dropIndicatorSize` | `36` | The "dock along the whole edge" markers |
 | `fontPixelSize` | `12` | Tab titles |
 | `animationDuration` | `160` | Layout animations (`0` disables them) |
@@ -483,7 +501,7 @@ Signal: `layoutChanged()`, emitted on the main area after any change in any wind
 | `area` | `int` | `Dock.Center` | Placement hint |
 | `areaSize` | `real` | `0.25` | Fraction of the window for edge hints |
 | `openOnStart` | `bool` | `true` | |
-| `movable`, `floatable`, `closable` | `bool` | `true` | Restrictions |
+| `movable`, `floatable`, `closable`, `tabbable` | `bool` | `true` | Restrictions |
 | `minimumWidth`, `minimumHeight` | `real` | `120`, `80` | |
 | `maximumWidth`, `maximumHeight` | `real` | infinite | |
 | `background` | `color` | `style.panel` | `"transparent"` to show what's behind |
@@ -511,14 +529,15 @@ Methods: `open()`, `close()`, `popOut()`, `raise()`.
 
 | Gesture | Result |
 |---|---|
-| Drag a tab onto the edge of a panel | Split that panel |
-| Drag onto the middle of a panel | Add as a tab |
+| Drag a tab (or a title bar) onto the edge of a panel | Split that panel |
+| Drag onto the middle of a panel | Add as a tab (or split, if either panel is not `tabbable`) |
 | Drag onto a tab bar | Insert or reorder at that position |
 | Drag onto an edge marker (shown while dragging) | Dock along the whole side of the window |
 | Drag into another Quilt window | Move it there |
 | Drop outside every window | Pop out into a new window |
 | Esc while dragging | Cancel |
-| Drag the gap between panels | Resize |
+| Drag the gap between panels | Resize. The whole straight line moves, across every panel it borders |
+| Ctrl-drag the gap between panels | Resize only the segment under the cursor, without snapping |
 | Double-click a tab, or the □ button | Maximize / restore |
 | Pop-out button (box with arrow), or right-click › Pop Out | Pop out |
 | × button, middle-click, or right-click › Close | Close |

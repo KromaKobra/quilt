@@ -75,7 +75,8 @@ QT_QPA_PLATFORM=offscreen timeout 5 qml6 -I . examples/sandbox.qml   # smoke-loa
 
 It also has:
 
-- restricted panels: "Tools" has a fixed width, "Status" can't be moved, popped out or closed
+- restricted panels: "Tools" has a fixed width and can't share a tab group (plain title bar); "Status" can't be moved, popped out or closed
+- a **2×2 grid** button that arranges four panels in quadrants, for trying split lines
 - a transparent panel ("Glass")
 - runtime-created panels: *New document*
 - a **Panels** menu
@@ -112,8 +113,8 @@ To watch the integration tests run in a real window, drop `QT_QPA_PLATFORM=offsc
 
 | Suite | Covers |
 |---|---|
-| `tst_layout_tree.qml` (35 tests, pure JS, no window) | parse/serialize round trips; unknown/duplicate panels; flattening and collapsing; tab insert/reorder; remove with space hand-off; split into or around parents; edge docking; hint placement; drop no-ops; move/split/edge/empty drops; never losing a panel; min/max water-filling; overflow; layout rectangles and handles; maximize; pair resizing with clamps; hit-test zones and gaps |
-| `tst_dock_area.qml` (28 tests, real components, offscreen windows) | initial layout from hints and `defaultLayout`; panels parented into stacks; tab clicks; dragging a split handle to its minimum; clicks reaching panel content; maximize; close/reopen keeping content state; reopen by hint; drops that split, insert into a tab bar, or dock at an edge; drops on the panel's own group; tear-off at the window border vs. cancel; non-movable panels; pop-out windows; docking into pop-outs; non-floatable refusal; auto-closing empty pop-outs; closing pop-outs (both policies); save/restore including windows; tolerant restore; autosave across a restart; runtime panels; minimum sizes |
+| `tst_layout_tree.qml` (47 tests, pure JS, no window) | parse/serialize round trips; unknown/duplicate panels; flattening and collapsing; tab insert/reorder; remove with space hand-off; split into or around parents; edge docking; hint placement; drop no-ops; move/split/edge/empty drops; never losing a panel; non-tabbable panels (placement, drops, hit-testing, separating them in JSON layouts); min/max water-filling; overflow; layout rectangles and handles; maximize; pair resizing with clamps; handle hit-testing; linked lines; snap candidates; line resizing with shared limits; breaking a handle at shared cuts with geometry preserved; hit-test zones and gaps |
+| `tst_dock_area.qml` (36 tests, real components, offscreen windows) | initial layout from hints and `defaultLayout`; panels parented into stacks; tab clicks; dragging a split handle to its minimum; clicks reaching panel content; maximize; close/reopen keeping content state; reopen by hint; drops that split, insert into a tab bar, or dock at an edge; drops on the panel's own group; tear-off at the window border vs. cancel; non-movable panels; pop-out windows; docking into pop-outs; non-floatable refusal; auto-closing empty pop-outs; closing pop-outs (both policies); save/restore including windows; tolerant restore; autosave across a restart; runtime panels; minimum sizes; non-tabbable panels (own group, title bar, refused tabs, restore); real-mouse split-line drags: whole lines, Ctrl segments, breaking a full-length handle, snapping, no snapping with Ctrl |
 
 ### What can't be automated
 
@@ -228,11 +229,21 @@ Run `qml6 -I . examples/sandbox.qml` and go through the list. Do it on each plat
 - [ ] Type in Notes, move it, pop it out, close and reopen it from Panels. The text is still there.
 - [ ] The viewport frame counter keeps counting through every move and pop-out.
 
-**Resizing**
+**Resizing** (click **2×2 grid** first)
 
-- [ ] Drag a gap between panels. Only the two neighbours change.
-- [ ] Drag a gap far past a panel's minimum. It stops.
-- [ ] "Tools" stays 52 px wide when the window is resized.
+- [ ] Drag the middle vertical line, at the top or the bottom. All four panels change width together. The middle horizontal line does the same for heights.
+- [ ] Hover a line. The whole line lights up; with Ctrl held, only the segment under the cursor does.
+- [ ] Ctrl-drag the top half of the vertical line. Only the top two panels change.
+- [ ] Drag that top half (no Ctrl) back near the bottom half. It snaps into line; drag again and both halves move together.
+- [ ] Ctrl-drag a half close to the other one. It does not snap.
+- [ ] Drag a line far past a panel's minimum. It stops, and the whole line stops with it.
+- [ ] Press **Reset**. "Tools" stays 52 px wide when the window is resized.
+
+**Non-tabbable panels** ("Tools")
+
+- [ ] It has a plain title bar: no tab, no accent line when active.
+- [ ] Drag another tab onto the middle of Tools. The preview shows a split, never a tab.
+- [ ] Drag Tools by its title bar onto the middle of another panel. It splits beside it rather than joining.
 
 **Pop-out windows**
 

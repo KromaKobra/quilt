@@ -45,6 +45,19 @@ ApplicationWindow {
     property var savedLayout: null
     property int documentCount: 0
 
+    // Four panels in quadrants, for trying split lines: drag the middle
+    // lines, Ctrl-drag one half, drag it back close to the other half.
+    function gridDemo() {
+        const shown = ["viewport", "inspector", "timeline", "notes"];
+        dock.restoreLayout({
+            version: 1,
+            main: { column: [ { row: [ { tabs: ["viewport"] }, { tabs: ["inspector"] } ] },
+                              { row: [ { tabs: ["timeline"] }, { tabs: ["notes"] } ] } ] },
+            windows: [],
+            closed: dock.manager.panelOrder.filter(id => shown.indexOf(id) < 0)
+        });
+    }
+
     function newDocument() {
         documentCount += 1;
         const p = documentComponent.createObject(dock, {
@@ -88,9 +101,10 @@ ApplicationWindow {
             ToolButton { text: "Save layout"; onClicked: window.savedLayout = dock.saveLayout() }
             ToolButton { text: "Restore"; enabled: window.savedLayout !== null; onClicked: dock.restoreLayout(window.savedLayout) }
             ToolButton { text: "Reset"; onClicked: dock.resetLayout() }
+            ToolButton { text: "2×2 grid"; onClicked: window.gridDemo() }
             Item { Layout.fillWidth: true }
             Label {
-                text: "drag tabs to rearrange · drop outside the window to pop out · double-click a tab to maximize"
+                text: "drag tabs to rearrange · drop outside to pop out · Ctrl-drag a split line to move one segment"
                 opacity: 0.55
                 Layout.rightMargin: 10
             }
@@ -223,6 +237,7 @@ ApplicationWindow {
             minimumWidth: 52
             maximumWidth: 52                    // fixed width
             closable: false
+            tabbable: false                     // its own group, with a plain title bar
             Column {
                 anchors.horizontalCenter: parent.horizontalCenter
                 topPadding: 6

@@ -341,13 +341,16 @@ function dockAtEdge(root, panelId, side, fraction) {
     return normalize(makeSplit(type, before ? [fresh, root] : [root, fresh], 1));
 }
 
-// The stack with the most area, used as the "centre" of a layout.
-function largestStack(root) {
+// The stack with the most area, used as the "centre" of a layout. An
+// optional `accept(stack)` filter skips stacks.
+function largestStack(root, accept) {
     if (!root)
         return null;
     var l = computeLayout(root, 1000, 1000, {});
     var best = null, bestArea = -1;
     stacks(root).forEach(function (s) {
+        if (accept && !accept(s))
+            return;
         var r = l.rects[s.id];
         var a = r.width * r.height;
         if (a > bestArea) { bestArea = a; best = s; }
@@ -355,25 +358,59 @@ function largestStack(root) {
     return best;
 }
 
+// Tab groups: `canShare(panelId)` says whether a panel may share a stack
+// with others (DockPanel.tabbable). Omitted means every panel may.
+function canJoin(stack, panelId, canShare) {
+    if (!stack || !canShare)
+        return !!stack;
+    if (!canShare(panelId))
+        return false;
+    return stack.panels.every(function (id) { return id === panelId || canShare(id); });
+}
+
 // Places a panel using its declarative hint:
-//   { side: "center" | "left" | ..., fraction, group: [panelIds], activate }
+//   { side: "center" | "left" | ..., fraction, group: [panelIds], activate,
+//     canShare(panelId) }
 // It joins the first stack that holds a panel of `group` (panels sharing the
 // same hint); otherwise centre panels join the largest stack and edge panels
-// dock along their edge.
+// dock along their edge. A panel that can't share a stack gets its own: a
+// centre one splits the largest stack instead of joining it.
 function placeByHint(root, panelId, hint) {
     var h = hint || {};
+    var joinable = function (s) { return canJoin(s, panelId, h.canShare); };
     var target = null;
     var group = h.group || [];
-    for (var i = 0; i < group.length && !target; ++i)
-        if (group[i] !== panelId)
-            target = findStackOf(root, group[i]);
-    if (!target && (h.side === "center" || !h.side))
-        target = largestStack(root);
+    for (var i = 0; i < group.length && !target; ++i) {
+        var s = group[i] !== panelId ? findStackOf(root, group[i]) : null;
+        if (joinable(s))
+            target = s;
+    }
+    var centre = h.side === "center" || !h.side;
+    if (!target && centre)
+        target = largestStack(root, joinable);
     if (target)
         return insertTab(root, target.id, panelId, -1, h.activate !== false);
     if (!root)
         return makeStack([panelId], panelId, 1);
+    if (centre)
+        return splitAt(root, largestStack(root).id, panelId, "right");
     return dockAtEdge(root, panelId, h.side, h.fraction);
+}
+
+// Moves panels that can't share a stack out of any stack they share, each
+// into its own stack beside it. Used on layouts from JSON.
+function separateSolo(root, canShare) {
+    if (!canShare)
+        return root;
+    stacks(root).forEach(function (s) {
+        s.panels.filter(function (id) { return !canShare(id); }).forEach(function (id) {
+            if (s.panels.length < 2)
+                return;
+            root = removePanel(root, id);
+            root = splitAt(root, s.id, id, "right");
+        });
+    });
+    return root;
 }
 
 // True when dropping `panelId` on `target` would leave the layout unchanged.
@@ -398,12 +435,15 @@ function isNoop(root, panelId, target) {
 // Moves a panel already in (or new to) this tree onto a drop target:
 //   { kind: "tab", stackId, index } | { kind: "split", stackId, side, fraction }
 //   { kind: "edge", side, fraction } | { kind: "empty" }
-function applyDrop(root, panelId, target) {
+// A "tab" target that would break canShare becomes a split to its right.
+function applyDrop(root, panelId, target, canShare) {
     if (!target || isNoop(root, panelId, target))
         return root;
     var src = findStackOf(root, panelId);
     if (target.kind === "tab" && src && src.id === target.stackId)
         return insertTab(root, target.stackId, panelId, target.index, true);
+    if (target.kind === "tab" && !canJoin(findStack(root, target.stackId), panelId, canShare || function () { return true; }))
+        target = { kind: "split", stackId: target.stackId, side: "right" };
     root = removePanel(root, panelId);
     var hasTarget = !!findStack(root, target.stackId);
     if (target.kind === "tab" && hasTarget)
@@ -413,7 +453,7 @@ function applyDrop(root, panelId, target) {
     if (target.kind === "edge")
         return dockAtEdge(root, panelId, target.side, target.fraction);
     // "empty", or a target that no longer exists: never lose the panel.
-    return placeByHint(root, panelId, { side: "center" });
+    return placeByHint(root, panelId, { side: "center", canShare: canShare });
 }
 
 // ---------------------------------------------------------------------------
@@ -614,6 +654,219 @@ function applyResize(state, delta) {
 }
 
 // ---------------------------------------------------------------------------
+//  Lines of split handles
+//
+// In a 2x2 grid the middle vertical line is drawn by two handles, one per
+// row (or by one handle, if the tree is two columns instead). Users see one
+// line, so handles that continue each other in a straight line (same
+// direction, same position, end to end across a crossing gap) move as one.
+// Ctrl-dragging moves only the segment under the cursor; isolateSegment()
+// re-shapes the tree when that segment is part of a single longer handle.
+
+function _pos(h) {
+    return h.horizontal ? h.x + h.width / 2 : h.y + h.height / 2;
+}
+
+function _span(h) {
+    return h.horizontal ? [h.y, h.y + h.height] : [h.x, h.x + h.width];
+}
+
+// End to end: same direction, not overlapping, at most `reach` apart.
+function _continues(a, b, reach) {
+    if (a.horizontal !== b.horizontal)
+        return false;
+    var sa = _span(a), sb = _span(b);
+    var gap = Math.max(sa[0], sb[0]) - Math.min(sa[1], sb[1]);
+    return gap >= -1 && gap <= reach;
+}
+
+// The handle whose grab area contains (x, y), or "". Near a crossing the
+// closest handle wins.
+function handleAt(layout, x, y, grab) {
+    var best = "", bestDist = Infinity;
+    Object.keys(layout.handles).forEach(function (k) {
+        var h = layout.handles[k];
+        var s = _span(h);
+        var across = h.horizontal ? y : x;
+        if (across < s[0] || across > s[1])
+            return;
+        var d = Math.abs((h.horizontal ? x : y) - _pos(h));
+        if (d <= Math.max(grab || 0, h.horizontal ? h.width : h.height) / 2 && d < bestDist) {
+            bestDist = d;
+            best = k;
+        }
+    });
+    return best;
+}
+
+// Keys of every handle on the same straight line as `key` (including it).
+//   opts: { gap, tolerance }  tolerance: max misalignment in px (default 1)
+function linkedHandles(layout, key, opts) {
+    var o = opts || {};
+    var tol = o.tolerance === undefined ? 1 : o.tolerance;
+    var reach = (o.gap || 0) + 1;
+    if (!layout.handles[key])
+        return [];
+    var all = Object.keys(layout.handles);
+    var seen = {};
+    seen[key] = true;
+    var queue = [key], out = [];
+    while (queue.length) {
+        var k = queue.shift();
+        var h = layout.handles[k];
+        out.push(k);
+        all.forEach(function (other) {
+            var g = layout.handles[other];
+            if (!seen[other] && _continues(h, g, reach) && Math.abs(_pos(h) - _pos(g)) <= tol) {
+                seen[other] = true;
+                queue.push(other);
+            }
+        });
+    }
+    return out;
+}
+
+// Handles a line (the handles `keys`) could snap to and join: they continue
+// one of its handles end to end but sit at another position.
+// Returns [{ key, pos }].
+function snapCandidates(layout, keys, opts) {
+    var reach = ((opts && opts.gap) || 0) + 1;
+    var inLine = {};
+    keys.forEach(function (k) { inLine[k] = true; });
+    var out = [];
+    Object.keys(layout.handles).forEach(function (other) {
+        var g = layout.handles[other];
+        if (inLine[other])
+            return;
+        for (var i = 0; i < keys.length; ++i) {
+            if (_continues(layout.handles[keys[i]], g, reach)) {
+                out.push({ key: other, pos: _pos(g) });
+                return;
+            }
+        }
+    });
+    return out;
+}
+
+// How far (in px, as [min, max] deltas) a set of resize states can all move
+// together.
+function lineRange(states) {
+    var lo = -Infinity, hi = Infinity;
+    states.forEach(function (s) {
+        var total = s.a + s.b;
+        var lower = Math.max(s.minA, total - s.maxB);
+        var upper = Math.min(s.maxA, total - s.minB);
+        if (lower > upper) {
+            lower = s.a;
+            upper = s.a;
+        }
+        lo = Math.max(lo, lower - s.a);
+        hi = Math.min(hi, upper - s.a);
+    });
+    return lo <= hi ? [lo, hi] : [0, 0];
+}
+
+// Moves every handle of a line by the same delta, stopping where the first
+// of them must stop. Returns the delta used.
+function applyLineResize(states, delta) {
+    var r = lineRange(states);
+    var d = Math.min(r[1], Math.max(r[0], delta));
+    states.forEach(function (s) { applyResize(s, d); });
+    return d;
+}
+
+// Positions along handle `key` where both of its neighbours are cut at the
+// same place, e.g. the middle of a 2x2 grid built as two columns. These are
+// where the handle can be broken into separate segments.
+// Returns [{ left, right, pos }]: the cut after child `left` of the first
+// neighbour lines up with the cut after child `right` of the second.
+function sharedCuts(root, layout, key, tolerance) {
+    var h = layout.handles[key];
+    var split = h ? findNode(root, h.splitId) : null;
+    if (!isSplit(split))
+        return [];
+    var perp = split.type === "row" ? "column" : "row";
+    var a = split.children[h.index], b = split.children[h.index + 1];
+    if (!a || !b || a.type !== perp || b.type !== perp)
+        return [];
+    var tol = tolerance === undefined ? 1 : tolerance;
+    var out = [];
+    for (var i = 0; i + 1 < a.children.length; ++i) {
+        var ca = layout.handles[a.id + ":" + i];
+        for (var j = 0; ca && j + 1 < b.children.length; ++j) {
+            var cb = layout.handles[b.id + ":" + j];
+            if (cb && Math.abs(_pos(ca) - _pos(cb)) <= tol)
+                out.push({ left: i, right: j, pos: _pos(ca) });
+        }
+    }
+    return out;
+}
+
+// The part of handle `key` between the shared cuts around `along` (a
+// position along the handle): what a Ctrl-drag there would move.
+function segmentAt(root, layout, key, along, tolerance) {
+    var h = layout.handles[key];
+    if (!h)
+        return null;
+    var s = _span(h);
+    var lo = s[0], hi = s[1];
+    sharedCuts(root, layout, key, tolerance).forEach(function (c) {
+        if (c.pos <= along)
+            lo = Math.max(lo, c.pos);
+        else
+            hi = Math.min(hi, c.pos);
+    });
+    return h.horizontal ? { x: h.x, y: lo, width: h.width, height: hi - lo, horizontal: true }
+                        : { x: lo, y: h.y, width: hi - lo, height: h.height, horizontal: false };
+}
+
+function _bands(children, cuts) {
+    var out = [], start = 0;
+    cuts.forEach(function (i) {
+        out.push(children.slice(start, i + 1));
+        start = i + 1;
+    });
+    out.push(children.slice(start));
+    return out;
+}
+
+function _bandNode(type, nodes, size) {
+    if (nodes.length === 1) {
+        nodes[0].size = size;
+        return nodes[0];
+    }
+    var total = 0;
+    nodes.forEach(function (n) { total += n.size; });
+    nodes.forEach(function (n) { n.size = n.size / total; });
+    return makeSplit(type, nodes, size);
+}
+
+// Breaks handle `key` at its shared cuts so each segment becomes a handle of
+// its own, keeping the geometry: row(column(A, C), column(B, D)) becomes
+// column(row(A, B), row(C, D)). Returns the new root, or null (tree
+// untouched) when the handle has no shared cuts.
+function isolateSegment(root, layout, key, tolerance) {
+    var cuts = sharedCuts(root, layout, key, tolerance);
+    if (!cuts.length)
+        return null;
+    var h = layout.handles[key];
+    var split = findNode(root, h.splitId);
+    var type = split.type, perp = type === "row" ? "column" : "row";
+    var a = split.children[h.index], b = split.children[h.index + 1];
+    var wa = a.size, wb = b.size;
+    var bandsA = _bands(a.children, cuts.map(function (c) { return c.left; }));
+    var bandsB = _bands(b.children, cuts.map(function (c) { return c.right; }));
+    var rows = bandsA.map(function (band, i) {
+        var size = 0;
+        band.concat(bandsB[i]).forEach(function (n) { size += n.size / 2; });
+        return makeSplit(type, [_bandNode(perp, band, wa / (wa + wb)),
+                                _bandNode(perp, bandsB[i], wb / (wa + wb))], size);
+    });
+    split.children.splice(h.index, 2, makeSplit(perp, rows, wa + wb));
+    return normalize(root);
+}
+
+// ---------------------------------------------------------------------------
 //  Drop hit-testing
 
 function _inside(r, x, y) {
@@ -642,7 +895,9 @@ function sideRect(r, side, fraction) {
 // Resolves what a drop at (x, y) would do. Returns a target (see applyDrop)
 // with a `rect` to preview, or null over a gap.
 //   opts: { tabHeight, indicatorSize, indicatorInset, edgeFraction,
-//           tabIndexAt(stackId, localX) -> insertion index }
+//           tabIndexAt(stackId, localX) -> insertion index,
+//           canTab(stackId) -> false when the panel may not join that stack }
+// Over a stack it may not join, the whole stack splits at the nearest edge.
 function hitTest(root, layout, width, height, x, y, opts) {
     var o = opts || {};
     var whole = { x: 0, y: 0, width: width, height: height };
@@ -660,18 +915,20 @@ function hitTest(root, layout, width, height, x, y, opts) {
         if (!_inside(r, x, y))
             continue;
         var lx = x - r.x, ly = y - r.y;
-        if (ly < tabH)
+        var canTab = o.canTab ? o.canTab(id) : true;
+        if (canTab && ly < tabH)
             return { kind: "tab", stackId: id, inTabBar: true, rect: r,
                      index: o.tabIndexAt ? o.tabIndexAt(id, lx) : -1 };
-        var ch = r.height - tabH;
+        var top = canTab ? tabH : 0;
+        var ch = r.height - top;
         var fx = r.width > 0 ? lx / r.width : 0.5;
-        var fy = ch > 0 ? (ly - tabH) / ch : 0.5;
+        var fy = ch > 0 ? (ly - top) / ch : 0.5;
         var d = { left: fx, right: 1 - fx, top: fy, bottom: 1 - fy };
         var best = "left";
         for (var s = 1; s < sides.length; ++s)
             if (d[sides[s]] < d[best])
                 best = sides[s];
-        if (d[best] < 0.25)
+        if (d[best] < 0.25 || !canTab)
             return { kind: "split", stackId: id, side: best, rect: sideRect(r, best, 0.5) };
         return { kind: "tab", stackId: id, index: -1, inTabBar: false, rect: r };
     }

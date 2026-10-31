@@ -18,7 +18,7 @@ This document explains how Quilt is put together and why. It is for people chang
  │ DockArea (main)  ── owns ──► DockManager ◄──── │ DockArea (secondary)          │
  │   root: layout tree (plain JS)        │   ▲   │   root: layout tree           │
  │   Repeater ► DockStack (tab group)    │   │   │   Repeater ► DockStack ...    │
- │   Repeater ► SplitHandle              │   │   └──────────────────────────────┘
+ │   SplitHandles (one item, all gaps)   │   │   └──────────────────────────────┘
  │   DropArea, drop preview, dragProxy   │   │
  │   DockPanel × n  (declared here)      │   └── registry of every DockPanel,
  └───────────────────────────────────────┘       every DockArea and pop-out window,
@@ -31,7 +31,7 @@ This document explains how Quilt is put together and why. It is for people chang
 | `DockArea.qml` | One docking surface per window. Owns its window's tree, renders it, and handles drops. The first one (with no `manager` set) creates the `DockManager` and becomes the *main* area. |
 | `DockManager.qml` | State shared by all areas: panels, areas, pop-out windows, the active panel, the drag session, save/restore and autosave. |
 | `DockStack.qml` | Renders one tab group: the tab bar and a content host that panels are parented into. |
-| `SplitHandle.qml` | The draggable gap between two neighbours in a split. |
+| `SplitHandles.qml` | One item per area that handles every split line: hover highlight, cursors, dragging, snapping. |
 | `DockPanel.qml` | The developer's panel: configuration plus content (its children). |
 | `DockWindow.qml` | Default pop-out window: an `ApplicationWindow` wrapping a secondary `DockArea`. |
 | `DockStyle.qml`, `Dock.qml` | Theme values and enums. |
@@ -66,9 +66,22 @@ The **save format** is the same tree in a compact form: `{ row: [...] }`, `{ col
 | `dockAtEdge(root, panelId, side, fraction)` | Dock along a whole edge, taking the space from the largest child so existing edge panels keep their size |
 | `removePanel(root, panelId)` | Remove the panel, then collapse whatever became degenerate |
 | `placeByHint(root, panelId, hint)` | Join a group of panels with the same `area` hint, otherwise centre into the largest group, otherwise dock at the hinted edge |
-| `applyDrop(root, panelId, target)` | Remove then insert, for a drop target. Detects no-ops, and never loses the panel even if the target has vanished |
+| `applyDrop(root, panelId, target, canShare)` | Remove then insert, for a drop target. Detects no-ops, and never loses the panel even if the target has vanished |
+| `separateSolo(root, canShare)` | Move panels that may not share a group into groups of their own (for layouts loaded from JSON) |
+| `isolateSegment(root, layout, key)` | Break a handle at its shared cuts (see [Split lines](#split-lines)) |
 
 Every operation is covered by `tests/tst_layout_tree.qml`.
+
+### Panels that can't share a group
+
+`DockPanel.tabbable: false` reaches the tree functions as a `canShare(panelId)` predicate, and `canJoin(stack, panelId, canShare)` is the single rule: a panel may join a stack only if it and every panel already there may share. Everything respects it:
+
+- **Hint placement** skips groups it may not join. A non-tabbable centre panel splits the largest group instead of joining it.
+- **Hit-testing** turns the whole stack into split zones (nearest edge) when the dragged panel may not join it.
+- **`applyDrop`** turns a "tab" target that breaks the rule into a split, so API calls can't break it either.
+- **Restoring and resetting** run `separateSolo` on every parsed tree.
+
+A stack holding a non-tabbable panel renders a plain title bar instead of tabs (`DockStack.solo`).
 
 ## Rendering: a flat pass, no recursion
 
@@ -78,9 +91,9 @@ Every operation is covered by `tests/tst_layout_tree.qml`.
 - a rectangle for every **handle** (the gap between neighbours), keyed `"splitId:index"`
 - the list of stack ids
 
-A `DockArea` renders that with two `Repeater`s, one of `DockStack`s and one of `SplitHandle`s. Each delegate looks up its own rectangle by id. The tree is never mirrored as a tree of items, so there are no recursive Loaders and nothing to keep in sync by hand.
+A `DockArea` renders the stacks with one `Repeater` of `DockStack`s. Each delegate looks up its own rectangle by id. The split handles need no items of their own: a single `SplitHandles` item covers the area and works from the handle rectangles (see [Split lines](#split-lines)). The tree is never mirrored as a tree of items, so there are no recursive Loaders and nothing to keep in sync by hand.
 
-The Repeaters' models are `ListModel`s **diff-synced by id** (`DockArea._sync()`):
+The Repeater's model is a `ListModel` **diff-synced by id** (`DockArea._sync()`):
 
 - **Resizing** the window or a handle recomputes rectangles only. No items are created or destroyed.
 - **Structural changes** (drops, closes) keep the delegates of stacks that still exist. Those animate to their new rectangles: `Behavior`s are enabled for one animation period after each change.
@@ -111,8 +124,18 @@ A panel that leaves every layout is **parked**: `parent = null`, invisible, with
   - If the minimums don't fit, everyone shrinks proportionally to their minimum.
   - If every child is pinned at its maximum, the leftover is shared out anyway, so there is never an unpainted hole.
 - **Pixel snapping.** Boundaries are rounded to whole pixels on cumulative positions, so there is no blur and no drift.
-- **Resizing.** Dragging a handle snapshots the pixel sizes and weights of its two neighbours (`beginResize`). Each move recomputes just those two weights within their combined weight (`applyResize`), clamped so neither crosses its own limits. Other children are untouched.
+- **Resizing one handle.** Dragging a handle snapshots the pixel sizes and weights of its two neighbours (`beginResize`). Each move recomputes just those two weights within their combined weight (`applyResize`), clamped so neither crosses its own limits. Other children are untouched.
 - **Window minimums.** `DockArea.minimumWidth` and `minimumHeight` are the root's limits; windows bind to them.
+
+### Split lines
+
+Users see lines, not tree handles. In a 2×2 grid the middle vertical line is two handles when the tree is `column(row(A, B), row(C, D))`, but one handle when it is `row(column(A, C), column(B, D))`. Both shapes must behave the same, so resizing works on **lines**:
+
+- **Linking.** `linkedHandles(layout, key)` collects every handle that continues the grabbed one in a straight line: same direction, same position (within 1 px), end to end across at most one crossing gap. A normal drag resizes all of them. `lineRange()` intersects their allowed ranges, so the line moves as one and stops as soon as any panel along it reaches a limit (`applyLineResize`).
+- **Ctrl: one segment.** A Ctrl-drag resizes only the handle under the cursor. When that handle is one long handle bordering several panels, `sharedCuts()` finds the positions where both of its neighbours are cut at the same place, and `isolateSegment()` re-shapes the tree so each piece becomes its own handle. For example, `row(column(A, C), column(B, D))` becomes `column(row(A, B), row(C, D))`. Bands between non-shared cuts are kept as nested splits. Geometry is preserved, and the stacks (and so the panels) are untouched.
+- **Snapping.** At the start of a drag, `snapCandidates()` lists the handles that continue the line end to end but sit at another position. While Ctrl is up, the line jumps onto any candidate within `style.snapDistance`. Once aligned, the two are linked by the rule above.
+- **One persistent item.** `SplitHandles` covers the whole area with a `containmentMask` that accepts points only over a handle, so every other press reaches the panels underneath. One `HoverHandler` drives the cursor and highlight, and one `DragHandler` drives the resizing. A per-handle item would be destroyed by `isolateSegment()` re-shaping the tree at the start of its own drag, which is why there is a single item.
+- **Drag distance.** The item computes the drag distance itself (pointer minus press position). `DragHandler.activeTranslation` skips the move that crosses the drag threshold.
 
 ## Drag and drop
 
@@ -142,6 +165,8 @@ Quilt uses that one mechanism for **every** panel drag, on every platform. Rearr
 3. **The outer 25% of a stack's content.** Split on that side; the preview is the half the panel will take.
 4. **Anything else inside a stack.** Add as a tab.
 5. **Over a gap between panels.** Returns `null`; the area keeps the previous target, so the preview doesn't flicker.
+
+Over a stack the dragged panel may not join (one of them isn't `tabbable`), steps 2 and 4 don't apply: the whole stack splits at its nearest edge.
 
 ### Tearing off versus cancelling
 

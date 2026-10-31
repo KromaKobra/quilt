@@ -10,4 +10,4 @@ Dock 1.0 Dock.qml
 # Implementation details
 internal DockManager DockManager.qml
 internal DockStack DockStack.qml
-internal SplitHandle SplitHandle.qml
+internal SplitHandles SplitHandles.qml
