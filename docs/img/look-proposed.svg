@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 760" width="1280" height="760" font-family="Inter, 'Noto Sans', 'Segoe UI', system-ui, sans-serif">
+<title>Quilt: proposed look</title>
+<rect x="0" y="0" width="1280" height="760" rx="0" fill="#0e0f12" />
+<rect x="6" y="6" width="232" height="748" rx="8" fill="#1a1c20" />
+<rect x="6" y="38" width="232" height="1" rx="0" fill="#2d3037" />
+<text x="18" y="27" fill="#e4e6ea" font-size="12" font-weight="500" text-anchor="start" >Outliner</text>
+<rect x="18" y="37" width="55" height="2" rx="1" fill="#787d87" />
+<text x="93" y="27" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Assets</text>
+<path d="M20 57 l3.5 3.5 l3.5 -3.5" stroke="#9ca1ab" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+<text x="34" y="63" fill="#e4e6ea" font-size="12" font-weight="400" text-anchor="start" >Scene</text>
+<path d="M34 81 l3.5 3.5 l3.5 -3.5" stroke="#9ca1ab" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+<text x="48" y="87" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Group</text>
+<rect x="12" y="95" width="220" height="24" rx="4" fill="#4c8dff" fill-opacity="0.18"/>
+<text x="62" y="111" fill="#e4e6ea" font-size="12" font-weight="400" text-anchor="start" >Cube</text>
+<text x="62" y="135" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Sphere</text>
+<text x="62" y="159" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Key light</text>
+<text x="48" y="183" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Camera</text>
+<path d="M36 199.5 l3.5 3.5 l-3.5 3.5" stroke="#9ca1ab" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+<text x="48" y="207" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Environment</text>
+<rect x="244" y="6" width="716" height="520" rx="8" fill="#1a1c20" />
+<rect x="244" y="38" width="716" height="1" rx="0" fill="#2d3037" />
+<text x="256" y="27" fill="#e4e6ea" font-size="12" font-weight="500" text-anchor="start" >Viewport</text>
+<rect x="256" y="37" width="55" height="2" rx="1" fill="#787d87" />
+<text x="331" y="27" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >UV editor</text>
+<path d="M244 39 h716 v479 a8 8 0 0 1 -8 8 h-700 a8 8 0 0 1 -8 -8 z" fill="#121316"/>
+<g stroke="#1a1c20" stroke-width="1">
+<line x1="282" y1="39" x2="282" y2="526"/>
+<line x1="322" y1="39" x2="322" y2="526"/>
+<line x1="362" y1="39" x2="362" y2="526"/>
+<line x1="402" y1="39" x2="402" y2="526"/>
+<line x1="442" y1="39" x2="442" y2="526"/>
+<line x1="482" y1="39" x2="482" y2="526"/>
+<line x1="522" y1="39" x2="522" y2="526"/>
+<line x1="562" y1="39" x2="562" y2="526"/>
+<line x1="602" y1="39" x2="602" y2="526"/>
+<line x1="642" y1="39" x2="642" y2="526"/>
+<line x1="682" y1="39" x2="682" y2="526"/>
+<line x1="722" y1="39" x2="722" y2="526"/>
+<line x1="762" y1="39" x2="762" y2="526"/>
+<line x1="802" y1="39" x2="802" y2="526"/>
+<line x1="842" y1="39" x2="842" y2="526"/>
+<line x1="882" y1="39" x2="882" y2="526"/>
+<line x1="922" y1="39" x2="922" y2="526"/>
+<line x1="244" y1="79" x2="960" y2="79"/>
+<line x1="244" y1="119" x2="960" y2="119"/>
+<line x1="244" y1="159" x2="960" y2="159"/>
+<line x1="244" y1="199" x2="960" y2="199"/>
+<line x1="244" y1="239" x2="960" y2="239"/>
+<line x1="244" y1="279" x2="960" y2="279"/>
+<line x1="244" y1="319" x2="960" y2="319"/>
+<line x1="244" y1="359" x2="960" y2="359"/>
+<line x1="244" y1="399" x2="960" y2="399"/>
+<line x1="244" y1="439" x2="960" y2="439"/>
+<line x1="244" y1="479" x2="960" y2="479"/>
+<line x1="244" y1="519" x2="960" y2="519"/>
+</g>
+<rect x="550.0" y="230.0" width="104" height="104" rx="14" fill="#4c8dff" transform="rotate(16 602.0 282.0)"/>
+<text x="256" y="60" fill="#787d87" font-size="11" font-weight="400" text-anchor="start" >Perspective</text>
+<rect x="244" y="532" width="716" height="222" rx="8" fill="#1a1c20" />
+<rect x="244" y="564" width="716" height="1" rx="0" fill="#2d3037" />
+<text x="256" y="553" fill="#e4e6ea" font-size="12" font-weight="500" text-anchor="start" >Timeline</text>
+<rect x="256" y="563" width="55" height="2" rx="1" fill="#787d87" />
+<text x="331" y="553" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Console</text>
+<text x="378" y="583" fill="#787d87" font-size="11" font-weight="400" text-anchor="middle" >0</text>
+<rect x="378" y="590" width="1" height="4" rx="0" fill="#2d3037" />
+<text x="434" y="583" fill="#787d87" font-size="11" font-weight="400" text-anchor="middle" >24</text>
+<rect x="434" y="590" width="1" height="4" rx="0" fill="#2d3037" />
+<text x="490" y="583" fill="#787d87" font-size="11" font-weight="400" text-anchor="middle" >48</text>
+<rect x="490" y="590" width="1" height="4" rx="0" fill="#2d3037" />
+<text x="546" y="583" fill="#787d87" font-size="11" font-weight="400" text-anchor="middle" >72</text>
+<rect x="546" y="590" width="1" height="4" rx="0" fill="#2d3037" />
+<text x="602" y="583" fill="#787d87" font-size="11" font-weight="400" text-anchor="middle" >96</text>
+<rect x="602" y="590" width="1" height="4" rx="0" fill="#2d3037" />
+<text x="658" y="583" fill="#787d87" font-size="11" font-weight="400" text-anchor="middle" >120</text>
+<rect x="658" y="590" width="1" height="4" rx="0" fill="#2d3037" />
+<text x="714" y="583" fill="#787d87" font-size="11" font-weight="400" text-anchor="middle" >144</text>
+<rect x="714" y="590" width="1" height="4" rx="0" fill="#2d3037" />
+<text x="770" y="583" fill="#787d87" font-size="11" font-weight="400" text-anchor="middle" >168</text>
+<rect x="770" y="590" width="1" height="4" rx="0" fill="#2d3037" />
+<text x="826" y="583" fill="#787d87" font-size="11" font-weight="400" text-anchor="middle" >192</text>
+<rect x="826" y="590" width="1" height="4" rx="0" fill="#2d3037" />
+<text x="882" y="583" fill="#787d87" font-size="11" font-weight="400" text-anchor="middle" >216</text>
+<rect x="882" y="590" width="1" height="4" rx="0" fill="#2d3037" />
+<text x="938" y="583" fill="#787d87" font-size="11" font-weight="400" text-anchor="middle" >240</text>
+<rect x="938" y="590" width="1" height="4" rx="0" fill="#2d3037" />
+<rect x="244" y="595" width="716" height="1" rx="0" fill="#2d3037" />
+<text x="258" y="620" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Position</text>
+<rect x="404" y="607" width="180" height="18" rx="4" fill="#272a30" />
+<rect x="400.5" y="612.5" width="7" height="7" rx="1.5" fill="#9ca1ab" transform="rotate(45 404 616)"/>
+<rect x="510.5" y="612.5" width="7" height="7" rx="1.5" fill="#9ca1ab" transform="rotate(45 514 616)"/>
+<rect x="580.5" y="612.5" width="7" height="7" rx="1.5" fill="#9ca1ab" transform="rotate(45 584 616)"/>
+<text x="258" y="648" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Rotation</text>
+<rect x="460" y="635" width="230" height="18" rx="4" fill="#272a30" />
+<rect x="456.5" y="640.5" width="7" height="7" rx="1.5" fill="#9ca1ab" transform="rotate(45 460 644)"/>
+<rect x="686.5" y="640.5" width="7" height="7" rx="1.5" fill="#9ca1ab" transform="rotate(45 690 644)"/>
+<text x="258" y="676" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Opacity</text>
+<rect x="544" y="663" width="120" height="18" rx="4" fill="#272a30" />
+<rect x="540.5" y="668.5" width="7" height="7" rx="1.5" fill="#9ca1ab" transform="rotate(45 544 672)"/>
+<rect x="660.5" y="668.5" width="7" height="7" rx="1.5" fill="#9ca1ab" transform="rotate(45 664 672)"/>
+<rect x="513.5" y="565" width="1" height="189" rx="0" fill="#4c8dff" />
+<rect x="509" y="565" width="10" height="6" rx="2" fill="#4c8dff" />
+<rect x="966" y="6" width="308" height="748" rx="8" fill="#1a1c20" />
+<rect x="966" y="38" width="308" height="1" rx="0" fill="#2d3037" />
+<text x="978" y="27" fill="#e4e6ea" font-size="12" font-weight="500" text-anchor="start" >Inspector</text>
+<rect x="978" y="37" width="62" height="2" rx="1" fill="#4c8dff" />
+<text x="1060" y="27" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Notes</text>
+<path d="M1230 17 h-3 v8 h8 v-3 M1232 17 h3 v3 M1235 17 l-4.5 4.5" stroke="#9ca1ab" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M1248 17 h8 v8 h-8 z" stroke="#9ca1ab" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M980 57 l3.5 3.5 l3.5 -3.5" stroke="#9ca1ab" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+<text x="996" y="63" fill="#e4e6ea" font-size="12" font-weight="500" text-anchor="start" >Transform</text>
+<text x="982" y="91" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Position</text>
+<rect x="1074.0" y="75" width="60.0" height="24" rx="4" fill="#272a30" />
+<text x="1082.0" y="91" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >X</text>
+<text x="1096.0" y="91" fill="#e4e6ea" font-size="12" font-weight="400" text-anchor="start" style="font-variant-numeric: tabular-nums">120</text>
+<rect x="1138.0" y="75" width="60.0" height="24" rx="4" fill="#272a30" />
+<text x="1146.0" y="91" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Y</text>
+<text x="1160.0" y="91" fill="#e4e6ea" font-size="12" font-weight="400" text-anchor="start" style="font-variant-numeric: tabular-nums">48</text>
+<rect x="1202.0" y="75" width="60.0" height="24" rx="4" fill="#272a30" />
+<text x="1210.0" y="91" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Z</text>
+<text x="1224.0" y="91" fill="#e4e6ea" font-size="12" font-weight="400" text-anchor="start" style="font-variant-numeric: tabular-nums">0</text>
+<text x="982" y="119" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Rotation</text>
+<rect x="1074" y="103" width="188" height="24" rx="4" fill="#272a30" />
+<text x="1082" y="119" fill="#a98bf5" font-size="12" font-weight="400" text-anchor="start" style="font-variant-numeric: tabular-nums">45°</text>
+<text x="1254" y="119" fill="#a98bf5" font-size="12" font-weight="400" text-anchor="end" font-style="italic">ƒ</text>
+<circle cx="975" cy="143" r="2.5" fill="#4c8dff"/>
+<text x="982" y="147" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Scale</text>
+<rect x="1074" y="131" width="188" height="24" rx="4" fill="#272a30" />
+<text x="1082" y="147" fill="#e4e6ea" font-size="12" font-weight="400" text-anchor="start" style="font-variant-numeric: tabular-nums">1.5</text>
+<rect x="966" y="163" width="308" height="1" rx="0" fill="#2d3037" />
+<path d="M980 182 l3.5 3.5 l3.5 -3.5" stroke="#9ca1ab" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+<text x="996" y="188" fill="#e4e6ea" font-size="12" font-weight="500" text-anchor="start" >Appearance</text>
+<text x="982" y="216" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Opacity</text>
+<rect x="1074" y="200" width="188" height="24" rx="4" fill="#272a30" />
+<path d="M1078 200 h113 v24 h-113 a4 4 0 0 1 -4 -4 v-16 a4 4 0 0 1 4 -4 z" fill="#3a3e47"/>
+<rect x="1073.25" y="199.25" width="189.5" height="25.5" rx="4.75" fill="none" stroke="#4c8dff" stroke-width="1.5"/>
+<text x="1082" y="216" fill="#e4e6ea" font-size="12" font-weight="400" text-anchor="start" style="font-variant-numeric: tabular-nums">62%</text>
+<text x="982" y="244" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Blend</text>
+<rect x="1074" y="228" width="188" height="24" rx="4" fill="#272a30" />
+<text x="1082" y="244" fill="#e4e6ea" font-size="12" font-weight="400" text-anchor="start" style="font-variant-numeric: tabular-nums">Normal</text>
+<path d="M1246 238.5 l3.5 3.5 l3.5 -3.5" stroke="#9ca1ab" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+<text x="982" y="272" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Fill</text>
+<rect x="1074" y="256" width="188" height="24" rx="4" fill="#272a30" />
+<rect x="1077" y="259" width="18" height="18" rx="3" fill="#4c8dff" />
+<text x="1102" y="272" fill="#e4e6ea" font-size="12" font-weight="400" text-anchor="start" >4C8DFF</text>
+<text x="1254" y="272" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="end" >100%</text>
+<text x="982" y="300" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Align</text>
+<rect x="1074" y="284" width="188" height="24" rx="4" fill="#272a30" />
+<rect x="1137.3333333333333" y="286" width="61.333333333333336" height="20" rx="3" fill="#3a3e47" />
+<text x="1106.6666666666667" y="300" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="middle" >Left</text>
+<text x="1168.0" y="300" fill="#e4e6ea" font-size="12" font-weight="400" text-anchor="middle" >Center</text>
+<text x="1229.3333333333335" y="300" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="middle" >Right</text>
+<text x="982" y="328" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Visible</text>
+<rect x="1074" y="317" width="14" height="14" rx="3" fill="#4c8dff" />
+<path d="M1077.5 324.2 l2.6 2.6 l4.6 -5.2" stroke="#0e0f12" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+<text x="982" y="356" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Shadows</text>
+<rect x="1074" y="345" width="26" height="14" rx="7" fill="#4c8dff" />
+<circle cx="1093" cy="352" r="5" fill="#0e0f12"/>
+<rect x="966" y="372" width="308" height="1" rx="0" fill="#2d3037" />
+<path d="M980 391 l3.5 3.5 l3.5 -3.5" stroke="#9ca1ab" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+<text x="996" y="397" fill="#e4e6ea" font-size="12" font-weight="500" text-anchor="start" >Geometry</text>
+<text x="982" y="425" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Segments</text>
+<rect x="1074" y="409" width="188" height="24" rx="4" fill="#272a30" />
+<path d="M1083 421 h7" stroke="#9ca1ab" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M1246 421 h7 M1249.5 417.5 v7" stroke="#9ca1ab" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+<text x="1168.0" y="425" fill="#e4e6ea" font-size="12" font-weight="400" text-anchor="middle" >12</text>
+<text x="982" y="453" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Width</text>
+<rect x="1074" y="437" width="188" height="24" rx="4" fill="#272a30" />
+<text x="1082" y="453" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" style="font-variant-numeric: tabular-nums">Mixed</text>
+<text x="982" y="481" fill="#9ca1ab" font-size="12" font-weight="400" text-anchor="start" >Bevel</text>
+<rect x="1074" y="465" width="188" height="24" rx="4" fill="#272a30" />
+<rect x="1073.25" y="464.25" width="189.5" height="25.5" rx="4.75" fill="none" stroke="#f0616d" stroke-width="1.5"/>
+<text x="1082" y="481" fill="#e4e6ea" font-size="12" font-weight="400" text-anchor="start" style="font-variant-numeric: tabular-nums">2 * (3</text>
+<rect x="966" y="497" width="308" height="1" rx="0" fill="#2d3037" />
+<path d="M982 514.5 l3.5 3.5 l-3.5 3.5" stroke="#9ca1ab" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+<text x="996" y="522" fill="#e4e6ea" font-size="12" font-weight="500" text-anchor="start" >Physics</text>
+<circle cx="1053" cy="518" r="2.5" fill="#4c8dff"/>
+<rect x="1269" y="46" width="3" height="190" rx="1.5" fill="#3a3e47" />
+</svg>
