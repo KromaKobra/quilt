@@ -184,6 +184,11 @@ Item {
                         width: Math.min(220, Math.max(40, Math.ceil(measure.implicitWidth) + (hasIcon ? 20 : 0) + 2 * inset))
                         height: tabRow.height
 
+                        Accessible.role: Accessible.PageTab
+                        Accessible.name: label.text
+                        Accessible.selected: current
+                        Accessible.onPressAction: stack.select(modelData)
+
                         Text {
                             id: measure
                             visible: false
@@ -239,7 +244,7 @@ Item {
                             id: closeButton
                             style: stack.style
                             glyph: "close"
-                            tip: "Close"
+                            tip: qsTr("Close")
                             size: 16
                             backdrop: stack.style.tabBar
                             visible: !!tab.panel && tab.panel.closable && tabHover.hovered
@@ -357,7 +362,7 @@ Item {
             IconButton {
                 style: stack.style
                 glyph: "popout"
-                tip: "Pop out into a new window"
+                tip: qsTr("Pop out into a new window")
                 visible: !!stack.currentPanel && !!stack.manager && stack.manager.canFloat(stack.currentPanel)
                          && (stack.area.isMain || stack.area.panelCount > 1)
                 onClicked: stack.manager.popOut(stack.currentId)
@@ -365,14 +370,14 @@ Item {
             IconButton {
                 style: stack.style
                 glyph: stack.maximized ? "restore" : "maximize"
-                tip: stack.maximized ? "Restore" : "Maximize"
+                tip: stack.maximized ? qsTr("Restore") : qsTr("Maximize")
                 visible: stack.maximized || stack.area.stackCount > 1
                 onClicked: stack.manager.toggleMaximized(stack.currentId)
             }
             IconButton {
                 style: stack.style
                 glyph: "close"
-                tip: "Close"
+                tip: qsTr("Close")
                 visible: stack.solo && stack.currentPanel.closable
                 onClicked: stack.currentPanel.close()
             }
@@ -435,19 +440,19 @@ Item {
         readonly property var panel: stack.manager ? stack.manager.panel(panelId) : null
 
         MenuItem {
-            text: "Pop Out"
+            text: qsTr("Pop Out")
             enabled: !!tabMenu.panel && !!stack.manager && stack.manager.canFloat(tabMenu.panel)
                      && (stack.area.isMain || stack.area.panelCount > 1)
             onTriggered: stack.manager.popOut(tabMenu.panelId)
         }
         MenuItem {
-            text: stack.maximized ? "Restore" : "Maximize"
+            text: stack.maximized ? qsTr("Restore") : qsTr("Maximize")
             enabled: stack.maximized || stack.area.stackCount > 1
             onTriggered: stack.manager.toggleMaximized(tabMenu.panelId)
         }
         MenuSeparator { }
         MenuItem {
-            text: "Close"
+            text: qsTr("Close")
             enabled: !!tabMenu.panel && tabMenu.panel.closable
             onTriggered: stack.manager.closePanel(tabMenu.panelId)
         }
@@ -464,6 +469,10 @@ Item {
 
         width: size
         height: size
+
+        Accessible.role: Accessible.Button
+        Accessible.name: tip
+        Accessible.onPressAction: clicked()
 
         Rectangle {
             anchors.fill: parent
@@ -485,7 +494,7 @@ Item {
         }
 
         HoverHandler { id: hover }
-        TapHandler { onTapped: button.clicked() }
-        Tip { text: button.tip; shown: hover.hovered }
+        TapHandler { id: tap; onTapped: button.clicked() }
+        Tip { text: button.tip; shown: hover.hovered; pressed: tap.pressed }
     }
 }

@@ -1,12 +1,14 @@
-// The smallest useful Quilt app. Run from the repository root:
+// The smallest useful Quilt app: four docked panels, one of them an
+// inspector that edits a shape. Run from the repository root:
 //
 //     qml6 -I . examples/minimal.qml
 //
 // Drag tabs to rearrange, drag a tab outside the window to pop it out,
-// drag split gaps to resize, double-click a tab to maximize it.
+// drag split gaps to resize, double-click a tab to maximize it. In the
+// inspector, drag a number sideways, or click it and type.
 import QtQuick
-import QtQuick.Controls
 import Quilt
+import Quilt.Controls
 
 ApplicationWindow {
     width: 1200
@@ -15,26 +17,15 @@ ApplicationWindow {
     minimumHeight: dock.minimumHeight
     visible: true
     title: "Quilt — minimal"
-    color: dock.style.background
 
-    // Dark palette so the stock Controls match the dock theme.
-    palette {
-        window: dock.style.background
-        windowText: dock.style.text
-        base: "#15171b"
-        alternateBase: "#1a1d22"
-        text: dock.style.text
-        button: "#2a2e36"
-        buttonText: dock.style.text
-        light: "#3a3f48"
-        midlight: "#30343c"
-        mid: "#262a31"
-        dark: "#101215"
-        highlight: dock.style.accent
-        highlightedText: "#ffffff"
-        placeholderText: dock.style.textDim
-        toolTipBase: "#2a2e36"
-        toolTipText: dock.style.text
+    // The application's data. Quilt never keeps a copy of it.
+    QtObject {
+        id: box
+        property string name: "Box"
+        property real size: 160
+        property real angle: 15
+        property color fill: "#4c8dff"
+        property bool visible: true
     }
 
     DockArea {
@@ -45,9 +36,13 @@ ApplicationWindow {
             panelId: "viewport"
             title: "Viewport"
             Rectangle {
-                anchors.fill: parent
-                color: "#0d0f12"
-                Text { anchors.centerIn: parent; text: "Viewport"; color: "#5d6470"; font.pixelSize: 28 }
+                anchors.centerIn: parent
+                width: box.size
+                height: box.size
+                rotation: box.angle
+                radius: 12
+                color: box.fill
+                visible: box.visible
             }
         }
 
@@ -57,10 +52,10 @@ ApplicationWindow {
             area: Dock.Left
             areaSize: 0.2
             ListView {
-                anchors.fill: parent
-                anchors.margins: 6
+                anchors { fill: parent; margins: 8 }
+                clip: true
                 model: 40
-                delegate: Text { required property int index; text: "Object " + index; color: "#d7dae0"; padding: 4 }
+                delegate: Label { required property int index; text: "Object " + index; dim: true; padding: 4 }
             }
         }
 
@@ -69,13 +64,22 @@ ApplicationWindow {
             title: "Inspector"
             area: Dock.Right
             minimumWidth: 220
-            Column {
+            Inspector {
                 anchors.fill: parent
-                anchors.margins: 12
-                spacing: 8
-                TextField { width: parent.width; placeholderText: "Name" }
-                Slider { width: parent.width }
-                CheckBox { text: "Visible" }
+                PropertyRow { label: "Name"; TextField { text: box.name; onEdited: v => box.name = v } }
+                Section {
+                    title: "Shape"
+                    PropertyRow {
+                        label: "Size"
+                        NumberField { value: box.size; defaultValue: 160; from: 10; to: 400; suffix: " px"; onEdited: v => box.size = v }
+                    }
+                    PropertyRow {
+                        label: "Angle"
+                        NumberField { value: box.angle; defaultValue: 0; from: 0; to: 360; wrap: true; suffix: "°"; onEdited: v => box.angle = v }
+                    }
+                    PropertyRow { label: "Fill"; ColorField { value: box.fill; alpha: false; onEdited: c => box.fill = c } }
+                    PropertyRow { label: "Visible"; CheckBox { checked: box.visible; onEdited: v => box.visible = v } }
+                }
             }
         }
 
@@ -83,7 +87,7 @@ ApplicationWindow {
             panelId: "timeline"
             title: "Timeline"
             area: Dock.Bottom
-            Text { anchors.centerIn: parent; text: "Timeline"; color: "#5d6470" }
+            Label { anchors.centerIn: parent; text: "Timeline"; dim: true }
         }
     }
 }

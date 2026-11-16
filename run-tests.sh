@@ -31,21 +31,30 @@ export XDG_CONFIG_HOME
 trap 'rm -rf "$XDG_CONFIG_HOME"' EXIT
 
 echo "== qmllint"
-# qmllint wrongly reports "not declared as singleton in qmldir" for a
-# singleton linted as a file (Qt 6.12), so those four are linted without the
-# import category. -W 0 makes any other warning fail the run.
+# Any message fails the run. (qmllint's own exit code can't be used for that:
+# -W 0 also counts warnings it decides not to print.)
+lint() {
+    if ! out="$("$QT_BIN/qmllint" -I . "$@" 2>&1)" || [ -n "$out" ]; then
+        printf '%s\n' "$out" >&2
+        exit 1
+    fi
+}
+# A singleton linted as a file is wrongly reported as "not declared as
+# singleton in qmldir" (Qt 6.12), so those are linted without that category.
 SINGLETONS="Quilt/Style/Theme.qml Quilt/Controls/Expression.qml Quilt/Controls/Clipboard.qml Quilt/Controls/ColorHistory.qml"
 OTHERS=""
-for f in Quilt/*.qml Quilt/Style/*.qml Quilt/Controls/*.qml Quilt/Params/*.qml examples/*.qml examples/cpp-host/Main.qml; do
+# (examples/cpp-host/Main.qml uses a C++ type, so it is linted by its CMake
+# build instead: cmake --build <dir> --target all_qmllint.)
+for f in Quilt/*.qml Quilt/Style/*.qml Quilt/Controls/*.qml Quilt/Params/*.qml examples/*.qml; do
     case " $SINGLETONS " in
         *" $f "*) ;;
         *) OTHERS="$OTHERS $f" ;;
     esac
 done
 # shellcheck disable=SC2086
-"$QT_BIN/qmllint" -W 0 -I . $OTHERS
+lint $OTHERS
 # shellcheck disable=SC2086
-"$QT_BIN/qmllint" -W 0 -I . --import disable $SINGLETONS
+lint --import disable $SINGLETONS
 
 echo "== qmltestrunner"
 if [ "$#" -gt 0 ]; then

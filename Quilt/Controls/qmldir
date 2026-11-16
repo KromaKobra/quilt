@@ -44,6 +44,7 @@ singleton Expression 1.0 Expression.qml
 # Implementation details
 internal ValueEdit ValueEdit.qml
 internal FieldFrame FieldFrame.qml
+internal PressOutside PressOutside.qml
 internal ColorPicker ColorPicker.qml
 singleton ColorHistory 1.0 ColorHistory.qml
 singleton Clipboard 1.0 Clipboard.qml

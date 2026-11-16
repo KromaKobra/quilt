@@ -32,6 +32,17 @@ Item {
     Component { id: textField; TextField { width: 200 } }
     Component { id: checkBox; CheckBox { } }
     Component { id: merged; MergedParameter { } }
+    Component { id: row; PropertyRow { width: 400; label: "Value"; NumberField { } } }
+    // A stand-in for a viewport: clicking it changes the selection, and
+    // takes no keyboard focus.
+    Component {
+        id: viewport
+        Rectangle {
+            width: 200; height: 100; y: 150
+            signal tapped()
+            TapHandler { onTapped: parent.tapped() }
+        }
+    }
     Component { id: parameter; Parameter { } }
 
     TestCase {
@@ -243,6 +254,135 @@ Item {
             compare(root.log, ["start cube.width", "commit cube.width"]);
             f.reset();
             compare(w.value, 100);
+        }
+
+        // The row menu's linking items: copy one parameter's reference,
+        // paste it onto another as a link, edit and remove the link.
+        function test_row_menu_links_parameters() {
+            const source = make(row);
+            source.control.param = p("cube.width");
+            const target = make(row, { y: 40 });
+            target.control.param = p("ball.count");
+
+            function open(r) {
+                mouseClick(r, 30, 14, Qt.RightButton);
+                const menu = findChild(r, "rowMenu");
+                verify(menu);
+                tryVerify(() => menu.opened);
+                return menu;
+            }
+            function shown(menu) {
+                const out = [];
+                for (let i = 0; i < menu.count; ++i) {
+                    const item = menu.itemAt(i);
+                    if (item.visible && item.text !== undefined && item.text !== "")
+                        out.push(item.text);
+                }
+                return out;
+            }
+            function choose(menu, text) {
+                for (let i = 0; i < menu.count; ++i) {
+                    if (menu.itemAt(i).visible && menu.itemAt(i).text === text) {
+                        mouseClick(menu.itemAt(i));
+                        tryVerify(() => !menu.visible);
+                        return;
+                    }
+                }
+                fail("no visible menu item " + text);
+            }
+
+            let menu = open(source);
+            const items = shown(menu);
+            verify(items.indexOf("Copy Reference") >= 0, items);
+            verify(items.indexOf("Paste as Link") >= 0, items);
+            verify(items.indexOf("Remove Expression") < 0, items);     // nothing to remove yet
+            choose(menu, "Copy Reference");
+            compare(Clipboard.paste(), "cube.width");
+
+            menu = open(target);
+            choose(menu, "Paste as Link");
+            const count = p("ball.count");
+            compare(count.expression, "cube.width");
+            compare(count.state, Param.Driven);
+            compare(count.value, 100);
+            p("cube.width").setValue(120);
+            compare(count.value, 120);                  // it follows now
+
+            menu = open(target);
+            verify(shown(menu).indexOf("Remove Expression") >= 0);
+            choose(menu, "Edit Expression");            // editing shows the expression, not the number
+            verify(target.control.editing);
+            keyClick(Qt.Key_Escape);
+            verify(!target.control.editing);
+            compare(count.expression, "cube.width");
+
+            menu = open(target);
+            choose(menu, "Remove Expression");
+            compare(count.expression, "");
+            compare(count.state, Param.Normal);
+            compare(count.value, 120);                  // the value it had is kept
+        }
+
+        // ---- an edit lands on the object it started on
+
+        function test_typed_number_is_applied_before_a_click_elsewhere() {
+            const f = make(numberField, { param: p("cube.width") });
+            const view = make(viewport);
+            view.tapped.connect(() => f.param = p("ball.count"));   // "select another object"
+            mouseClick(f, 50, 12);
+            type("77");
+            mouseClick(view, 100, 50);
+            compare(p("cube.width").value, 77);
+            compare(p("ball.count").value, 1);
+            verify(!f.editing);
+            compare(f.param, p("ball.count"));
+            compare(root.log, ["start cube.width", "commit cube.width"]);
+        }
+
+        function test_refused_text_is_dropped_by_a_click_elsewhere() {
+            const f = make(numberField, { param: p("cube.width") });
+            const view = make(viewport);
+            mouseClick(f, 50, 12);
+            type("2*(");
+            keyClick(Qt.Key_Return);
+            verify(f.editing);                          // kept, with the reason
+            mouseClick(view, 100, 50);
+            verify(!f.editing);                         // focus is never held hostage
+            compare(p("cube.width").value, 100);
+        }
+
+        function test_typed_text_is_applied_before_a_click_elsewhere() {
+            const f = make(textField, { param: p("cube.name") });
+            const view = make(viewport);
+            view.tapped.connect(() => f.param = p("ball.count"));
+            mouseClick(f, 50, 12);
+            keyClick(Qt.Key_A, Qt.ControlModifier);
+            type("Box");
+            mouseClick(view, 100, 50);
+            compare(p("cube.name").value, "Box");
+            verify(!f.activeFocus);
+        }
+
+        function test_a_parameter_swapped_mid_drag_keeps_the_edit() {
+            const f = make(numberField, { param: p("cube.width") });
+            mousePress(f, 50, 12);
+            for (let x = 51; x <= 73; ++x)
+                mouseMove(f, x, 12, -1, Qt.LeftButton);
+            compare(p("cube.width").value, 101);
+            f.param = p("ball.count");                 // the selection changes mid-drag
+            compare(root.log, ["start cube.width", "commit cube.width"]);
+            for (let x = 74; x <= 120; ++x)
+                mouseMove(f, x, 12, -1, Qt.LeftButton);
+            mouseRelease(f, 120, 12);
+            compare(p("ball.count").value, 1);          // nothing leaked onto the new one
+            compare(p("cube.width").value, 101);
+            compare(root.log, ["start cube.width", "commit cube.width"]);
+
+            mousePress(f, 50, 12);                      // the next drag edits the new one
+            for (let x = 51; x <= 110; ++x)
+                mouseMove(f, x, 12, -1, Qt.LeftButton);
+            mouseRelease(f, 110, 12);
+            verify(p("ball.count").value > 1, p("ball.count").value);   // an int: a long drag to get past rounding
         }
 
         function test_field_drag_is_one_transaction() {

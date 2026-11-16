@@ -102,6 +102,11 @@ T.Control {
     focusPolicy: Qt.TabFocus
     opacity: enabled ? 1 : 0.4
 
+    Accessible.role: Accessible.Slider
+    Accessible.description: edit.stateText
+    Accessible.onIncreaseAction: increase()
+    Accessible.onDecreaseAction: decrease()
+
     Keys.onPressed: event => {
         const up = event.key === Qt.Key_Right || event.key === Qt.Key_Up;
         if (up || event.key === Qt.Key_Left || event.key === Qt.Key_Down) {
@@ -220,7 +225,7 @@ T.Control {
         }
     }
 
-    Tip { text: edit.message; shown: mouse.containsMouse && !mouse.pressed }
+    Tip { text: edit.message; shown: mouse.containsMouse; pressed: mouse.pressed }
 
     ValueEdit { id: edit; owner: control; live: control.live }
 }

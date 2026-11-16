@@ -1,6 +1,6 @@
-# Integrating Quilt into your QML application
+# Docking: integrating Quilt into your QML application
 
-This guide takes you from an empty window to a fully dockable tool UI. A complete API reference is at the end.
+This guide takes you from an empty window to a fully dockable tool UI. A complete API reference for docking is at the end. For the controls, the property grid, the theme and parameters, see the [controls guide](controls-guide.md).
 
 - [Requirements](#requirements)
 - [1. Add Quilt to your project](#1-add-quilt-to-your-project)
@@ -21,11 +21,20 @@ This guide takes you from an empty window to a fully dockable tool UI. A complet
 ## Requirements
 
 - Qt 6.8 or newer, with the Qt Quick, Qt Quick Controls and Qt Quick Shapes modules (all part of `qtdeclarative`).
-- No C++ is required. Quilt is a plain QML module.
+- No C++ is required. Quilt is a set of plain QML modules:
+
+| Import | | Folder |
+|---|---|---|
+| `import Quilt` | Docking (this guide) | `Quilt/` |
+| `import Quilt.Style` | The theme, icons, menus, tooltips. Comes along with the other two | `Quilt/Style/` |
+| `import Quilt.Controls` | Controls and the property grid ([controls guide](controls-guide.md)) | `Quilt/Controls/` |
+| `import Quilt.Params` | Optional parameter engine ([controls guide](controls-guide.md#8-quiltparams-linking-and-expressions)) | `Quilt/Params/` |
+
+Docking never imports `Quilt.Controls`. An application that only wants docking can delete `Quilt/Controls/` and `Quilt/Params/`.
 
 ## 1. Add Quilt to your project
 
-Copy the `Quilt/` folder into your project. The folder name must stay `Quilt`, because it is the module name. Then pick one of the two ways below to make it importable.
+Copy the `Quilt/` folder (with its `Style/`, `Controls/` and `Params/` subfolders) into your project. The folder names must stay as they are, because they are the module names. Then pick one of the two ways below to make it importable.
 
 ### Option A: import path (no build step)
 
@@ -47,23 +56,22 @@ engine.load(QUrl::fromLocalFile("main.qml"));
 
 ### Option B: compiled QML module (CMake)
 
-`Quilt/CMakeLists.txt` builds the module with `qt_add_qml_module`. QML is precompiled by qmlcachegen and the files are embedded in your binary.
+`Quilt/CMakeLists.txt` builds the modules with `qt_add_qml_module`. QML is precompiled by qmlcachegen and the files are embedded in your binary.
 
 ```cmake
 find_package(Qt6 6.8 REQUIRED COMPONENTS Quick QuickControls2)
 qt_standard_project_setup(REQUIRES 6.8)
 
-add_subdirectory(third_party/Quilt)          # wherever you copied it
+add_subdirectory(third_party/Quilt Quilt)    # wherever you copied it
 
 qt_add_executable(myapp main.cpp)
 qt_add_qml_module(myapp URI MyApp QML_FILES Main.qml)
-target_link_libraries(myapp PRIVATE Qt6::Quick quiltplugin)
+target_link_libraries(myapp PRIVATE Qt6::Quick Quilt::Quilt)
 ```
 
-```cpp
-#include <QtQml/qqmlextensionplugin.h>
-Q_IMPORT_QML_PLUGIN(QuiltPlugin)             // Quilt is a static module
+`Quilt::Quilt` is every module. To compile in less, link only what you import: `Quilt::Docking` (`import Quilt`), `Quilt::Controls`, `Quilt::Params` or `Quilt::Style`. Linking the target registers its modules with the QML engine, so `main.cpp` needs nothing Quilt-specific:
 
+```cpp
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
@@ -75,14 +83,14 @@ int main(int argc, char *argv[])
 }
 ```
 
-`examples/cpp-host/` is a complete, buildable version of this setup.
+`examples/cpp-host/` is a complete, buildable version of this setup, with a C++ object edited by Quilt's controls. Name the build directory `Quilt` (the second argument of `add_subdirectory`), or Qt's QML tooling warns that the module's output directory doesn't match its name.
 
 ## 2. Your first dock layout
 
 ```qml
 import QtQuick
-import QtQuick.Controls
 import Quilt
+import Quilt.Controls                        // optional: a window in Quilt's theme
 
 ApplicationWindow {
     width: 1280; height: 800
@@ -350,7 +358,19 @@ DockArea {
 }
 ```
 
-`DockWindow` is an `ApplicationWindow`, so `header`, `footer`, `menuBar`, `Material.theme` and similar all work. If you build a window from scratch instead, it must have a `required property var manager` and a `dockArea` property pointing at a `DockArea { manager: <that manager> }` that fills it.
+`DockWindow` is an `ApplicationWindow`, so `header`, `footer`, `menuBar`, `Material.theme` and similar all work. For frameless pop-outs with Quilt's own title bar and window buttons:
+
+```qml
+windowComponent: Component {
+    DockWindow {
+        id: popout
+        flags: Qt.Window | Qt.FramelessWindowHint
+        header: TitleBar { title: popout.dockArea.title }      // from Quilt.Controls
+    }
+}
+```
+
+If you build a window from scratch instead, it must have a `required property var manager` and a `dockArea` property pointing at a `DockArea { manager: <that manager> }` that fills it.
 
 **Platform note.** On Wayland, applications can't choose where windows appear. The compositor places pop-outs, and Hyprland and other tiling compositors tile them. Saved window positions are restored on X11, Windows and macOS, while saved sizes are restored everywhere.
 
@@ -388,33 +408,41 @@ A saved layout may mention dynamic panels. Recreate and `addPanel` them before c
 
 ## 10. Styling
 
-All visuals come from the main area's `style`, a `DockStyle`. Override individual values, or assign a whole new `DockStyle { }`:
+Docking takes its look from the theme in `Quilt.Style`, the same one the controls use. Switching `Theme.dark`, or changing a theme token, restyles the panels too. See [theming](controls-guide.md#11-theming).
+
+To change docking alone, override values on the main area's `style`, a `DockStyle`, or assign a whole new `DockStyle { }`:
 
 ```qml
 DockArea {
     style.accent: "#ff8a3d"
-    style.gap: 0              // seamless panels
+    style.gap: 1              // seamless panels, divided by hairlines…
     style.radius: 0
-    style.tabHeight: 28
+    style.background: Theme.border
+    style.buttonsOnHover: false   // panel buttons always shown
 }
 ```
 
 | Property | Default | Used for |
 |---|---|---|
-| `background` | `#111317` | Behind the panels (visible in the gaps). The area paints it |
-| `panel` | `#1e2127` | Default `DockPanel.background` |
-| `tabBar`, `tabHover` | `#16181c`, `#23262d` | Tab bar and hovered tabs |
-| `text`, `textDim` | `#d7dae0`, `#7f8591` | Current and other tab titles, icons |
-| `accent` | `#4c8dff` | Active tab marker, drop preview, handles |
-| `dropFill` | accent at 22% | Fill of the drop preview |
-| `gap` | `4` | Space between panels (`0` for a seamless look) |
-| `radius` | `6` | Panel corner radius |
-| `tabHeight` | `30` | Tab bar height |
+| `background` | `Theme.canvas` | Behind the panels, visible in the gaps. The area paints it |
+| `panel` | `Theme.surface` | Default `DockPanel.background` |
+| `tabBar` | `panel` | The tab strip. One surface with the panel unless you set it |
+| `tabHover` | `Theme.controlHover` | Behind a hovered tab-strip button |
+| `border` | `Theme.border` | The hairline under the tab strip |
+| `text`, `textDim`, `textFaint` | `Theme.text`, `.textSecondary`, `.textTertiary` | The current tab; other tabs and glyphs; the underline of an inactive panel's current tab |
+| `accent` | `Theme.accent` | The active panel's underline, drop preview, split lines |
+| `dropFill` | accent at 16% | Fill of the drop preview |
+| `gap` | `Theme.gap` (6) | Space between panels (`0` or `1` for a seamless look) |
+| `radius` | `Theme.radius` (8) | Panel corner radius |
+| `tabHeight` | `Theme.tabHeight` (32) | Tab strip height |
 | `handleGrabSize` | `8` | Grab width of split handles (even when `gap` is 0) |
 | `snapDistance` | `10` | How close a dragged split line must get to snap onto a segment it continues |
 | `dropIndicatorSize` | `36` | The "dock along the whole edge" markers |
-| `fontPixelSize` | `12` | Tab titles |
-| `animationDuration` | `160` | Layout animations (`0` disables them) |
+| `fontFamily`, `fontPixelSize`, `textRenderType` | from the theme | Tab titles |
+| `animationDuration` | `Theme.durationLayout` (160) | Layout animations (`0` disables them) |
+| `buttonsOnHover` | `true` | Pop-out, maximize and close appear while the pointer is over their tab strip. `false` shows them always |
+
+The rare panel actions (pop out, maximize, close) are hidden until the pointer is over the tab strip, and each has a second path that doesn't need hover: double-click a tab to maximize, middle-click to close, right-click for the tab menu.
 
 Set `background: "transparent"` on a panel to let whatever is behind it show through. If you also want to see *through the dock area*, set `style.background: "transparent"` too.
 
@@ -538,6 +566,6 @@ Methods: `open()`, `close()`, `popOut()`, `raise()`.
 | Esc while dragging | Cancel |
 | Drag the gap between panels | Resize. The whole straight line moves, across every panel it borders |
 | Ctrl-drag the gap between panels | Resize only the segment under the cursor, without snapping |
-| Double-click a tab, or the □ button | Maximize / restore |
-| Pop-out button (box with arrow), or right-click › Pop Out | Pop out |
-| × button, middle-click, or right-click › Close | Close |
+| Double-click a tab, or the □ button (shown while the pointer is over the tab strip) | Maximize / restore |
+| Pop-out button (shown on hover), or right-click › Pop Out | Pop out |
+| × on the hovered tab, middle-click, or right-click › Close | Close |

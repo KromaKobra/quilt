@@ -17,7 +17,7 @@ T.ScrollBar {
     implicitWidth: horizontal ? 0 : 10
     implicitHeight: horizontal ? 10 : 0
     padding: 2
-    minimumSize: orientation === Qt.Horizontal ? 24 / Math.max(24, width) : 24 / Math.max(24, height)
+    minimumSize: 24 / Math.max(24, horizontal ? availableWidth : availableHeight)   // the thumb is never shorter than 24 px
     hoverEnabled: true
     visible: policy !== T.ScrollBar.AlwaysOff && size < 1.0
 

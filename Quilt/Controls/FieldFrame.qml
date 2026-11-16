@@ -19,6 +19,12 @@ Rectangle {
     border.width: flat ? 0 : 1
     border.color: Theme.controlBorder
 
+    // Hover arrives at once and leaves softly.
+    Behavior on color {
+        enabled: !frame.hovered && Theme.durationFast > 0
+        ColorAnimation { duration: Theme.durationFast }
+    }
+
     Rectangle {
         id: flashFill
         anchors.fill: parent

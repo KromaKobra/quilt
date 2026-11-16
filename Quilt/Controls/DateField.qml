@@ -222,6 +222,10 @@ T.Control {
     focusPolicy: Qt.TabFocus
     opacity: enabled ? 1 : 0.4
 
+    Accessible.role: Accessible.EditableText
+    Accessible.description: [displayText, edit.stateText].filter(t => t !== "").join(", ")
+    Accessible.readOnly: _locked
+
     font.family: Theme.fontFamily
     font.pixelSize: Theme.fontSize
     font.features: ({ "tnum": 1 })
@@ -435,11 +439,7 @@ T.Control {
             enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.durationFast } }
             exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.durationFast } }
 
-            background: Rectangle {
-                radius: Theme.radius
-                color: Theme.raised
-                border.color: Theme.border
-            }
+            background: PopupBackground { }
 
             contentItem: Column {
                 spacing: 4
@@ -531,6 +531,16 @@ T.Control {
     }
 
     Tip { text: edit.message; shown: hover.hovered && !control.calendarOpen }
+
+    // Digits typed into a segment are applied before a press elsewhere acts.
+    PressOutside {
+        target: control
+        active: control.activeFocus && control._typed !== ""
+        onPressed: {
+            control._flushTyping();
+            edit.flush();
+        }
+    }
 
     ValueEdit { id: edit; owner: control; fallback: new Date(); live: control.live }
 }

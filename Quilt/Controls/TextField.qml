@@ -82,6 +82,8 @@ T.TextField {
     selectByMouse: true
     opacity: enabled ? 1 : 0.4
 
+    Accessible.description: edit.stateText
+
     // While idle the text is drawn by `idle` below, so it can be cut with
     // an ellipsis and show "Mixed".
     color: activeFocus ? Theme.text : "transparent"
@@ -191,7 +193,14 @@ T.TextField {
         }
     }
 
-    Tip { text: edit.message; shown: control.hovered }
+    Tip { text: edit.message; shown: control.hovered && !control.activeFocus }
+
+    // A press elsewhere in the window applies the text, as losing focus does.
+    PressOutside {
+        target: control
+        active: control.activeFocus
+        onPressed: control.focus = false
+    }
 
     ValueEdit { id: edit; owner: control; name: "text"; fallback: ""; live: control.live }
 }

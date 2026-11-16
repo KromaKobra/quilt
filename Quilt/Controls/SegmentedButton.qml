@@ -100,6 +100,9 @@ T.Control {
     focusPolicy: Qt.TabFocus
     opacity: enabled ? 1 : 0.4
 
+    Accessible.role: Accessible.Grouping
+    Accessible.description: [copyText(), edit.stateText].filter(t => t !== "").join(", ")
+
     font.family: Theme.fontFamily
     font.pixelSize: Theme.fontSize
 
@@ -160,6 +163,12 @@ T.Control {
                 width: track.segment
                 height: track.height
                 opacity: modelData.enabled ? 1 : 0.4
+
+                Accessible.role: control.exclusive ? Accessible.RadioButton : Accessible.CheckBox
+                Accessible.name: modelData.text !== "" ? modelData.text : modelData.tip
+                Accessible.checkable: true
+                Accessible.checked: on
+                Accessible.onPressAction: control.choose(index)
 
                 Rectangle {
                     anchors.fill: parent

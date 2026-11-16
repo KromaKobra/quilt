@@ -233,6 +233,10 @@ T.Control {
     property string _inputError
     property string _editStartText
     readonly property bool _focused: control.activeFocus || input.activeFocus
+    // The display dropped decimals or the suffix for want of room.
+    readonly property bool _cut: !edit.mixed && !textFromValue
+                                 && (displayText !== _format(Number(edit.shown) * displayScale, Math.max(0, decimals))
+                                     || (suffix !== "" && !suffixText.visible))
     readonly property color _ink: !enabled ? Theme.textTertiary
                                   : edit.driven ? Theme.driven
                                   : edit.mixed ? Theme.textSecondary
@@ -347,6 +351,13 @@ T.Control {
     focusPolicy: Qt.TabFocus
     opacity: enabled ? 1 : 0.4
 
+    Accessible.role: ranged ? Accessible.Slider : Accessible.SpinBox
+    Accessible.name: lead
+    Accessible.description: [edit.mixed ? "" : displayText + suffix, edit.stateText].filter(t => t !== "").join(", ")
+    Accessible.editable: !edit.readOnly
+    Accessible.onIncreaseAction: increase()
+    Accessible.onDecreaseAction: decrease()
+
     font.family: Theme.fontFamily
     font.pixelSize: Theme.fontSize
     font.features: ({ "tnum": 1 })              // digits of equal width: nothing shifts while dragging
@@ -391,7 +402,7 @@ T.Control {
 
         // The slider part: how far along the soft range the value is.
         Rectangle {
-            visible: control.ranged && !edit.mixed && !control.flat
+            visible: control.ranged && !edit.mixed && !control.flat && !control.editing
             width: Math.round(parent.width * control.position)
             height: parent.height
             topLeftRadius: parent.radius
@@ -436,6 +447,7 @@ T.Control {
                 renderType: Theme.textRenderType
             }
             Text {
+                id: suffixText
                 visible: control.suffix !== "" && !edit.mixed
                          && valueText.implicitWidth + implicitWidth <= content.room
                 text: control.suffix
@@ -617,10 +629,27 @@ T.Control {
     StepButton { id: minus; direction: -1 }
     StepButton { id: plus; direction: 1; x: control.width - width }
 
+    // Why the text was refused; else what drives the value; else the whole
+    // value, when there was no room to show all of it.
     Tip {
-        text: control._inputError !== "" ? control._inputError : edit.message
+        text: control._inputError !== "" ? control._inputError
+            : edit.message !== "" ? edit.message
+            : control._cut ? control._plain(Number(edit.shown) * control.displayScale) + control.suffix : ""
         shown: control._inputError !== "" || mouse.containsMouse
+        pressed: mouse.pressed
         immediate: control._inputError !== ""
+    }
+
+    // A press elsewhere in the window applies the typed text first, before
+    // whatever was clicked can act on it (change the selection, say).
+    PressOutside {
+        target: control
+        active: control.editing
+        onPressed: {
+            if (!control.commitEdit())
+                control.cancelEdit();
+            control.focus = false;
+        }
     }
 
     ValueEdit { id: edit; owner: control; live: control.live }

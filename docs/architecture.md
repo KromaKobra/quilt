@@ -1,6 +1,14 @@
 # How Quilt works
 
-This document explains how Quilt is put together and why. It is for people changing Quilt itself, or anyone who wants to understand its behaviour before relying on it. For using Quilt, see [integration.md](integration.md).
+This document explains how Quilt is put together and why. It is for people changing Quilt itself, or anyone who wants to understand its behaviour before relying on it. For using Quilt, see [integration.md](integration.md) (docking) and [controls-guide.md](controls-guide.md) (everything else).
+
+Quilt has four layers. Most of this document is about docking, the largest and oldest. The other three are described in [Theme, controls and parameters](#theme-controls-and-parameters).
+
+```
+Quilt.Style  ◄──  Quilt            (docking)
+     ▲
+     └────────  Quilt.Controls  ◄──  Quilt.Params   (optional)
+```
 
 ## Goals
 
@@ -9,6 +17,7 @@ This document explains how Quilt is put together and why. It is for people chang
 3. **Stable.** Moving a panel must never lose its state, and the layout must stay valid under any sequence of operations.
 4. **Simple to adopt.** Pure QML, one folder, a small API. The only requirements are Qt Quick, Controls and Shapes.
 5. **Works on Wayland.** Wayland forbids reading global coordinates and positioning windows, which rules out the classic "drag the floating window around" approach.
+6. **The application owns its data.** Controls show the application's value and hand every edit back. Quilt keeps no copy, no undo history and no object model.
 
 ## The pieces
 
@@ -225,6 +234,92 @@ It returns `false`, and leaves everything untouched, for unparseable input or an
 
 `manager.activePanel` is the panel the user last pressed in, switched to, dropped, or opened. A transparent item over each stack's content holds a `PointHandler`, which only takes *passive* grabs. It observes presses without stealing them (a `TapHandler` there would swallow clicks meant for the content). The active panel's tab shows an accent line.
 
+## Theme, controls and parameters
+
+### The theme
+
+`Quilt/Style/Theme.qml` is a singleton `QtObject` of tokens. Each colour is a binding on `dark` (`surface: dark ? "#1a1c20" : "#fafafb"`), so switching the theme is one assignment and everything bound to a token repaints. An application that assigns a token replaces that binding; one that wants to keep following `dark` overrides it with a `Binding` instead.
+
+A singleton, because pure QML can't pass a theme down the item tree the way Qt's Material style does through attached properties. The cost is one theme per application. Docking keeps its own per-area `DockStyle`, whose defaults are bindings to the theme, so the two always match unless the application decides otherwise.
+
+The pieces that docking and controls both draw with live in the same module:
+
+- **`Icon`** draws a path from one shared table (`Icons.js`) with a `Shape` and the curve renderer. The glyphs are 1.3 px strokes on a 12-unit grid, so they stay sharp at any scale.
+- **`Tip`** is a `Loader` that creates a `ToolTip` only while it is wanted. A tooltip is a popup, and an inspector of 300 rows would otherwise carry 300 of them. "Warm" timing (no delay when another tooltip just closed) is one timestamp on the theme.
+- **`PopupBackground`** is the surface of anything that floats. Its shadow, when `Theme.shadow` is set, is four widening rounded rectangles behind it: no shader effects, and nothing to clip when the popup is a window of its own.
+- **`Rebind`** re-evaluates a property's binding (see below). Checkable `Action`s, `MenuItem`s and buttons use it after every click.
+
+### The value plumbing: ValueEdit
+
+Every value control contains one `ValueEdit` (`Controls/ValueEdit.qml`, internal). It is the only place that knows how values move, so every control behaves the same way.
+
+**Showing the application's value.** A stock control flips its own `checked` when clicked, which leaves a binding like `checked: document.visible` installed but not re-evaluated. If the application refused the change, control and model disagree until the model changes for some other reason. Assigning from JavaScript is worse: it destroys the binding.
+
+`ValueEdit` writes the control's value property through a `Binding` element with `restoreMode: Binding.RestoreBinding`:
+
+1. `when = true` with the new value: the control shows the edit at once. The application's binding is set aside, not destroyed.
+2. The control emits `edited(value)`, and the application writes its model (or doesn't).
+3. `when = false`: Qt puts the application's binding back and evaluates it, so the control shows what the model now holds.
+
+A control whose value has no binding keeps what was written, so a control nobody listens to still works like a stock one. `Rebind` is the same mechanism, packaged for any property. This relies on `RestoreBinding` re-evaluating the restored binding, checked on Qt 6.12 and covered by the tests ("refused edit snaps back" in each control's suite).
+
+**Parameter objects.** With `param` set, a second `Binding` makes the control's value follow `param.value`, and an edit calls `param.setValue()` instead of writing the property. The state (`Driven`, `Mixed`, …), `expression`, `message`, `defaultValue` and `readOnly` are read from the parameter when it has them and from the control's own properties when it doesn't, member by member. This is the whole of the "duck-typed adapter": a few `!== undefined` checks.
+
+**Transactions.** `begin()`, `set(v)` and `end(commit)` bracket a gesture; `instant(v)` is all three for a click. `begin` remembers the start value; `end(false)` writes it back (emitting `edited(startValue)`) before `editFinished(false)`. Key and wheel steps call `step(v)`, which keeps one transaction open until 600 ms pass without a step or the control loses focus. With `live: false`, `set` stores a preview that the control draws, and only `end` reports it.
+
+**The original target.** `begin()` remembers the parameter it opened on, and every write and the closing `endEdit` go to that one. If the control's `param` is replaced while a transaction is open (the selection changed in the middle of a drag), the transaction is finished on the original, and the rest of the gesture is ignored until the control ends it.
+
+Typed text isn't a transaction until it is applied, so it needs one more piece. While a field is being typed into, `PressOutside` puts an item over the whole window whose `PointHandler` observes every press. Pointer handlers on the topmost item see a press first and a passive one doesn't take it, so the field applies its text before whatever was pressed (a viewport changing the selection) acts on it.
+
+**Temporary text.** Editing a mixed or driven value starts from an empty field or from the expression text, not from the number. `show(v)` displays such a value without reporting an edit, and `restore()` goes back to the model's value.
+
+### Controls
+
+Controls whose API matches Qt's are built on `QtQuick.Templates` (`CheckBox`, `Switch`, `ComboBox`, `TextField`, `Button`, `Menu`, `ScrollBar`, …), which supplies focus handling, keyboard behaviour and accessibility. Quilt supplies the visuals and routes every change through `ValueEdit`. `CheckBox`, for instance, sets `nextCheckState` to return the current state, so the template never flips the box by itself.
+
+Controls whose value handling differs from Qt's are built on the plain `T.Control`: `NumberField`, `Slider`, `Knob`, `SegmentedButton`, `VectorField`, `ColorField`, `DateField`, `TextArea`.
+
+**`NumberField`** draws the value as text and swaps in a `TextInput` only while typing. Dragging accumulates travel in value units from the start of the drag, then quantises: the value lands on multiples of the step counted from zero, and `toPrecision(12)` removes floating-point fuzz such as `0.30000000000000004`. When the value hits a limit the accumulated travel is clamped too, so reversing direction takes effect at once ("no dead travel"). A press only becomes a drag after `Theme.dragThreshold` pixels, and only if it moved more sideways than vertically. The wheel's `angleDelta` is accumulated into whole notches. `VectorField` is a row of `NumberField`s sharing one transaction; `ColorField` and `Knob` embed one for typing.
+
+**Typed input** goes through `Expr.js`: a tokenizer, a precedence-climbing parser that produces nested arrays, and an evaluator. It never calls `eval` or `Function`, and looks names up only in the tables' own properties, so `constructor` or `toString` can't reach JavaScript's built-ins. The same parser serves arithmetic in fields and expressions in `Quilt.Params`.
+
+**Popups** (dropdown lists, the colour picker, the calendar, menus) are created when first opened. The picker and the calendar are destroyed when they close, so a closed one costs nothing. All of them use `Theme.popupType`: `Popup.Item` by default, `Popup.Window` to let them leave a small window where the platform supports it.
+
+### The property grid
+
+`Inspector` is an `Item` holding a `Flickable` (not interactive: a drag belongs to the controls) around a `Column`. A `WheelHandler` scrolls it, with a short glide for notched wheels and none for trackpads. A control that takes the wheel (a focused number field) gets it first.
+
+**Finding each other.** A `PropertyRow` finds its `Section` and `Inspector` by walking up its parents and looking for marker properties (`isQuiltInspector`, `isQuiltSection`). Nothing is registered, so rows work inside `Repeater`s, `Loader`s and the application's own items, and a row used alone simply has no inspector. The label column width is a property of the inspector that every row reads.
+
+**Counts instead of scans.** A collapsed section shows a dot when a row inside is modified, and a filtered section hides when none of its rows match. Each row adds or removes itself from its section's two counts when its own state changes, so neither needs a scan of the rows.
+
+**Generated rows.** With a `model`, the inspector:
+
+1. Turns the model into an array of parameter objects. A JS array or a list of QObjects is used as is; an item model goes through an `Instantiator` of small adapter objects, one per row, that present the roles as parameter members.
+2. Computes a *shape*: for each parameter, its group and the kind of control its `type` asks for.
+3. Builds rows from a layout (groups, then kinds) that is only replaced when its JSON signature changes.
+4. Each row looks its parameter up by group and index, and copies the parameter's hints onto its control by name.
+
+Selecting another object of the same kind produces the same signature, so the rows stay: only the parameter each row points at changes. The scroll position, open sections and label width survive, and nothing is created. A hint that disappears can't be "un-set" on a control, so a row whose hints lose a name reloads its control.
+
+### The parameter engine
+
+`Quilt/Params/ParameterSet.qml` keeps three tables, all created with `Object.create(null)` so that no inherited name (`toString`) can be mistaken for a parameter:
+
+- `_byName`: name → `Parameter`.
+- `_parsed`: for each driven parameter, its parsed expression and the names it reads.
+- `_readers`: name → the parameters whose expressions read it. Rebuilt lazily, only after an expression or the set of parameters changed.
+
+**Resolving names.** A name in `cube.height`'s expression is looked up first next to it (`cube.` + name), then from the top. The longest prefix that names a parameter wins, and the rest is a property path, so `cube.position.x` reads one component of a vector.
+
+**Propagation.** When a value changes, a depth-first walk over `_readers` from that parameter collects everything downstream in post-order. Evaluating that list backwards visits every parameter after all the parameters it reads, and each one once, however the dependencies fan out and join.
+
+**Cycles** are checked when an expression is set, by walking what it reads. A parameter that closes a cycle is marked `Invalid` with "Circular reference" and keeps its last good value. After every expression change, invalid parameters are tried again, so breaking the cycle anywhere heals it.
+
+**Undo** needs nothing special: `save()` returns every value and expression as plain, JSON-safe data (colours and vectors as their parts), and `restore()` puts it back and re-evaluates everything. `editStarted` and `editFinished` come from the controls' transactions.
+
+`MergedParameter` presents several parameters as one: `Mixed` when their values differ, edits sent to all of them, and a single `beginEdit`/`endEdit` pair so a multi-object edit is one undo step.
+
 ## Design decisions and trade-offs
 
 | Decision | Why | Cost |
@@ -234,3 +329,8 @@ It returns `false`, and leaves everything untouched, for unparseable input or an
 | Floating = real OS windows only | One concept; multi-monitor by construction | No in-window floating overlays |
 | Weights, not pixels | Layouts scale with the window; JSON is resolution-independent | Side panels grow with the window unless given a maximum size |
 | Re-parenting panels | Content state always survives | Panels must not manage their own `visible`/geometry |
+| Controls write their own value, then restore the application's binding | A control nobody listens to works like a stock one; a refused or corrected edit shows what the model really holds | Relies on `Binding.RestoreBinding` re-evaluating the restored binding |
+| A duck-typed parameter adapter | Any object (QML, C++, Python) works; nothing to inherit or register | No compile-time check that an object has the right members |
+| One theme singleton | Pure QML can't inherit a theme down the item tree | One theme per application |
+| No shader effects | Cheap; popups that are windows need no transparent margins | The light theme's shadow is an approximation |
+| Quilt's own expression parser | User text never runs as code | A small language; applications that need more bring their own engine through the adapter |

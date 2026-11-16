@@ -73,6 +73,8 @@ Item {
         }
     }
 
+    Binding { id: brand; target: Theme; property: "accent"; value: "#ff8a3d"; when: false }
+
     Component { id: progress; ProgressBar { width: 200 } }
     Component { id: busy; BusyIndicator { } }
 
@@ -134,18 +136,30 @@ Item {
         function test_icon_button_and_its_tooltip() {
             const b = make(iconButton);
             compare(b.width, Theme.controlHeight);
-            mouseClick(b);
-            compare(root.clicks, 1);
-
             const delay = Theme.toolTipDelay;
             Theme.toolTipDelay = 30;
+            const tip = find(b, i => i.shown !== undefined && i.text === "Reset view");
+            verify(tip);
+            verify(!tip.item);                  // nothing exists until it is wanted
+
             mouseMove(b, 5, 5);
             mouseMove(b, 6, 6);
-            const shown = () => find(b, i => i.text === "Reset view" && i.visible) !== null
-                             || find(root.Window.window.contentItem.parent, i => i.text === "Reset view" && i.visible) !== null;
-            tryVerify(shown, 2000);
-            mouseMove(root, 300, 300);          // leaving hides it
-            tryVerify(() => !shown(), 2000);
+            tryVerify(() => tip.item !== null && tip.item.opened, 2000);
+            compare(tip.item.text, "Reset view");
+
+            mouseClick(b, 6, 6);                // a press puts it away…
+            compare(root.clicks, 1);
+            tryVerify(() => tip.item === null, 2000);
+            mouseMove(b, 8, 8);
+            wait(150);
+            verify(!tip.item);                  // …for as long as the pointer stays
+
+            mouseMove(root, 300, 300);
+            mouseMove(b, 5, 5);                 // leaving and coming back shows it again
+            mouseMove(b, 6, 6);
+            tryVerify(() => tip.item !== null && tip.item.opened, 2000);
+            mouseMove(root, 300, 300);
+            tryVerify(() => tip.item === null, 2000);
             Theme.toolTipDelay = delay;
         }
 
@@ -247,10 +261,11 @@ Item {
         }
 
         function test_title_bar_shows_the_title_and_opens_menus() {
-            const win = openWindow();
+            const win = openWindow({ frameless: true });
             const title = find(win.bar, i => i.text === "Document — App");
             verify(title);
             verify(title.visible);
+            compare(win.bar.title, win.title);
             compare(win.bar.height, Theme.titleBarHeight);
             compare(win.content.mapToItem(null, 0, 0).y, Theme.titleBarHeight);
 
@@ -276,6 +291,9 @@ Item {
             const win = openWindow();
             verify(!win.bar.frameless);
             verify(!win.bar.windowButtons);
+            compare(win.bar.title, "");         // the system's title bar shows it already
+            win.bar.title = "Custom";
+            verify(find(win.bar, i => i.text === "Custom").visible);
             verify(!find(win.bar, i => i.objectName === "windowButtons").visible);
         }
 
@@ -294,7 +312,9 @@ Item {
             mouseClick(maximize);
             tryCompare(win, "visibility", Window.Windowed);
 
-            mouseDoubleClickSequence(win.bar, win.bar.width / 2, 8);     // on the bar itself
+            // (Double-clicking the bar does the same. QtTest's simulated
+            // clicks never count as a double tap, so that is on the manual list.)
+            win.bar.toggleMaximized();
             tryCompare(win, "visibility", Window.Maximized);
             win.bar.toggleMaximized();
             tryCompare(win, "visibility", Window.Windowed);
@@ -305,7 +325,7 @@ Item {
 
         function test_frameless_window_has_resize_edges() {
             const win = openWindow({ frameless: true });
-            const frame = find(win.contentItem.parent, i => i.objectName === "resizeFrame");
+            const frame = find(win.bar.parent, i => i.objectName === "resizeFrame");     // over the whole window
             verify(frame);
             verify(frame.visible);
             compare(frame.width, win.width);
@@ -335,7 +355,7 @@ Item {
             verify(bar.contentItem.opacity < 0.01 || !bar.active);
             f.contentY = 300;
             verify(bar.position > 0);
-            verify(bar.height * bar.size >= 23.5);      // the thumb is never tiny
+            verify(bar.contentItem.height >= 23.5);     // the thumb is never tiny
             mouseMove(f, 196, 50);
             tryVerify(() => bar.contentItem.opacity > 0.99, 2000);
             mousePress(bar, 5, 40);
@@ -373,18 +393,24 @@ Item {
         // ---- theme
 
         function test_theme_switches_and_can_be_overridden() {
-            const dark = Theme.surface;
+            const dark = String(Theme.surface);     // (a colour read from a property stays live)
             Theme.dark = false;
-            verify(Theme.surface !== dark);
+            verify(String(Theme.surface) !== dark);
             verify(Theme.text.hslLightness < 0.3);
             Theme.dark = true;
-            compare(Theme.surface, dark);
+            compare(String(Theme.surface), dark);
 
+            // A Binding overrides a token for as long as it is on, and
+            // hands it back to the theme afterwards.
             const b = make(button, { primary: true });
-            const accent = Theme.accent;
-            Theme.accent = "#ff8a3d";
+            const accent = String(Theme.accent);
+            brand.when = true;
             compare(b.background.color, Qt.color("#ff8a3d"));
-            Theme.accent = accent;
+            brand.when = false;
+            compare(String(Theme.accent), accent);
+            Theme.dark = false;
+            verify(String(Theme.accent) !== accent);    // still following the theme
+            Theme.dark = true;
         }
 
         function test_theme_tokens_meet_their_contrast_targets() {

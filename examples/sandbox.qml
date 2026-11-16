@@ -322,8 +322,11 @@ ApplicationWindow {
                             visible: shape.selected
                         }
 
+                        // An exclusive grab, so the background's "select nothing" doesn't
+                        // also see the tap. (The DragHandler can still take over.)
                         TapHandler {
                             id: shapeTap
+                            gesturePolicy: TapHandler.ReleaseWithinBounds
                             acceptedModifiers: Qt.KeyboardModifierMask
                             onTapped: window.select(shape.modelData, (shapeTap.point.modifiers & Qt.ControlModifier) !== 0)
                         }

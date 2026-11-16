@@ -38,9 +38,7 @@ T.ToolTip {
         width: Math.min(implicitWidth, 280)
     }
 
-    background: Rectangle {
+    background: PopupBackground {
         radius: Theme.controlRadius + 2
-        color: Theme.raised
-        border.color: Theme.border
     }
 }

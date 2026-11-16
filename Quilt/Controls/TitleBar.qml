@@ -15,12 +15,13 @@ import Quilt.Style
 // It works in any window, as its `menuBar` or `header`. Drag it to move the
 // window and double-click it to maximize. In a frameless window it also
 // draws minimize, maximize and close, and lets the window be resized from
-// its edges. With the system's title bar left on, it is simply a menu bar.
+// its edges. With the system's title bar left on, it is simply a menu bar
+// (and shows no title, unless you give it one).
 Item {
     id: bar
 
     default property alias menus: menuBar.contentData
-    property string title: window ? window.title : ""
+    property string title: frameless ? window.title : ""    // with the system's title bar, that shows it
     property url icon                           // a small image at the far left
     property alias leading: leadingSlot.data    // your items after the menus
     property alias trailing: trailingSlot.data  // your items before the window buttons
@@ -161,6 +162,10 @@ Item {
         width: 44
         height: parent.height
 
+        Accessible.role: Accessible.Button
+        Accessible.name: tip
+        Accessible.onPressAction: clicked()
+
         Rectangle {
             anchors.fill: parent
             color: button.danger ? Theme.danger : Theme.controlHover
@@ -180,7 +185,7 @@ Item {
             gesturePolicy: TapHandler.ReleaseWithinBounds
             onTapped: button.clicked()
         }
-        Tip { text: button.tip; shown: buttonHover.hovered && !tap.pressed }
+        Tip { text: button.tip; shown: buttonHover.hovered; pressed: tap.pressed }
     }
 
     // A frameless window has no system border to resize by. These sit over

@@ -33,6 +33,24 @@ QtObject {
     readonly property bool modified: defaultValue !== undefined && defaultValue !== null && !mixed
                                      && !same(current, defaultValue)
 
+    // The state in words, for assistive technology: "driven, modified, = width / 2".
+    readonly property string stateText: {
+        const parts = [];
+        if (mixed)
+            parts.push(qsTr("mixed"));
+        else if (driven)
+            parts.push(qsTr("driven"));
+        else if (invalid)
+            parts.push(qsTr("invalid"));
+        if (modified)
+            parts.push(qsTr("modified"));
+        if (readOnly)
+            parts.push(qsTr("read-only"));
+        if (message !== "")
+            parts.push(message);
+        return parts.join(", ");
+    }
+
     // ---- the value
 
     readonly property var current: owner[name]
@@ -44,6 +62,8 @@ QtObject {
     property var startValue
 
     property bool _active: false
+    property var _target: null              // the parameter the open transaction edits
+    property bool _ignoring: false          // the rest of an interrupted gesture changes nothing
     property bool _stepping: false
     property bool _changed: false
     property bool _pause: false
@@ -82,6 +102,17 @@ QtObject {
         return String(a) === String(b);         // colours, vectors and other value types
     }
 
+    // An edit lands on the object it started on. If the parameter is
+    // swapped while a transaction is open (the selection changed in the
+    // middle of a drag), the edit is finished on the original one, and the
+    // rest of that gesture changes nothing.
+    onParamChanged: {
+        if (!_active)
+            return;
+        end(true);
+        _ignoring = true;
+    }
+
     // Opens a transaction. Safe to call twice.
     function begin() {
         if (_active) {
@@ -90,16 +121,20 @@ QtObject {
             end(true);                          // a run of key or wheel steps ends when a gesture starts
         }
         _active = true;
+        _ignoring = false;
         _changed = false;
         hasPreview = false;
         startValue = current;
-        if (param && typeof param.beginEdit === "function")
-            param.beginEdit();
+        _target = param;
+        if (_target && typeof _target.beginEdit === "function")
+            _target.beginEdit();
         owner.editStarted();
     }
 
     // Changes the value inside a transaction.
     function set(v) {
+        if (_ignoring)
+            return;
         if (!_active)
             begin();
         if (live) {
@@ -112,8 +147,10 @@ QtObject {
 
     // Closes the transaction. `commit` false puts the starting value back.
     function end(commit) {
-        if (!_active)
+        if (!_active) {
+            _ignoring = false;                  // the interrupted gesture is over
             return;
+        }
         const ok = commit !== false;
         _idle.stop();
         _stepping = false;
@@ -124,8 +161,10 @@ QtObject {
         else if (!ok && _changed)
             _commit(startValue);
         _active = false;
-        if (param && typeof param.endEdit === "function")
-            param.endEdit(ok);
+        const target = _target;
+        _target = null;
+        if (target && typeof target.endEdit === "function")
+            target.endEdit(ok);
         owner.editFinished(ok);
     }
 
@@ -195,9 +234,10 @@ QtObject {
 
     function _commit(v) {
         _changed = true;
-        if (param) {
-            if (typeof param.setValue === "function")
-                param.setValue(v);
+        const target = _active ? _target : param;
+        if (target) {
+            if (typeof target.setValue === "function")
+                target.setValue(v);
         } else {
             _write(v);
         }

@@ -19,6 +19,7 @@ T.Control {
     property real from: 0
     property real to: 1
     property real step: (to - from) / 100
+    property bool logarithmic: false        // spread the range logarithmically: frequencies, zoom (needs from > 0)
     property int decimals: 2
     property real displayScale: 1
     property string suffix
@@ -38,7 +39,7 @@ T.Control {
 
     readonly property bool modified: edit.modified
     readonly property bool pressed: mouse.pressed && _dragging
-    readonly property real position: to > from ? Math.min(1, Math.max(0, (Number(edit.shown) - from) / (to - from))) : 0
+    readonly property real position: _positionOf(Number(edit.shown))    // 0..1 along the arc
     readonly property string displayText: edit.mixed ? qsTr("Mixed") : _format(Number(edit.shown)) + suffix
 
     signal editStarted()
@@ -62,8 +63,26 @@ T.Control {
     property bool _dragging: false
     property bool _cancelled: false
     property bool _typing: false
-    property real _start: 0
+    property real _start: 0                 // position (0..1) where the drag began
     property real _travel: 0
+    readonly property bool _log: logarithmic && from > 0 && to > from
+
+    function _positionOf(v: real): real {
+        if (!(to > from))
+            return 0;
+        const p = _log ? Math.log(Math.max(v, from) / from) / Math.log(to / from) : (v - from) / (to - from);
+        return Math.min(1, Math.max(0, p));
+    }
+
+    // The value at `p` (0..1) along the arc, as fine as `fine` allows.
+    function _valueAt(p: real, fine: real): real {
+        const t = Math.min(1, Math.max(0, p));
+        if (!_log)
+            return _fit(from + (to - from) * t, fine);
+        // No fixed step on a logarithmic range: as many digits as are shown.
+        const v = from * Math.pow(to / from, t);
+        return Math.min(to, Math.max(from, parseFloat(v.toFixed(Math.max(0, decimals) + (fine < 1 ? 1 : 0)))));
+    }
 
     function _doneTyping() { _typing = false; }
 
@@ -87,7 +106,10 @@ T.Control {
         if (_locked || edit.mixed)
             return;
         const f = Theme.stepFactor(modifiers);
-        edit.step(_fit(Number(edit.shown) + n * step * f, Math.min(1, f)));
+        if (_log)
+            edit.step(_valueAt(position + n * 0.01 * f, Math.min(1, f)));
+        else
+            edit.step(_fit(Number(edit.shown) + n * step * f, Math.min(1, f)));
     }
 
     implicitWidth: Math.max(size + 8, caption.visible ? 48 : 0)
@@ -95,6 +117,12 @@ T.Control {
     activeFocusOnTab: true
     focusPolicy: Qt.TabFocus
     opacity: enabled ? 1 : 0.4
+
+    Accessible.role: Accessible.Dial
+    Accessible.name: text
+    Accessible.description: [displayText, edit.stateText].filter(t => t !== "").join(", ")
+    Accessible.onIncreaseAction: increase()
+    Accessible.onDecreaseAction: decrease()
 
     font.family: Theme.fontFamily
     font.pixelSize: Theme.fontSizeSmall
@@ -221,7 +249,7 @@ T.Control {
                 if (Math.abs(event.y - pressY) < Theme.dragThreshold || edit.mixed)
                     return;
                 control._dragging = true;
-                control._start = Number(edit.shown);
+                control._start = control.position;
                 control._travel = 0;
                 lastY = event.y;
                 control.forceActiveFocus(Qt.MouseFocusReason);     // so Esc reaches us
@@ -229,12 +257,11 @@ T.Control {
             }
             const f = Theme.stepFactor(event.modifiers);
             // Up is more: 200 px of travel covers the range.
-            control._travel += (lastY - event.y) / 200 * (control.to - control.from) * f;
+            control._travel += (lastY - event.y) / 200 * f;
             lastY = event.y;
-            const raw = control._start + control._travel;
-            const clamped = Math.min(control.to, Math.max(control.from, raw));
-            control._travel = clamped - control._start;             // no dead travel at the ends
-            edit.set(control._fit(clamped, Math.min(1, f)));
+            const p = Math.min(1, Math.max(0, control._start + control._travel));
+            control._travel = p - control._start;                   // no dead travel at the ends
+            edit.set(control._valueAt(p, Math.min(1, f)));
         }
         onReleased: {
             if (control._dragging) {
@@ -289,7 +316,7 @@ T.Control {
         }
     }
 
-    Tip { text: edit.message; shown: mouse.containsMouse && !mouse.pressed }
+    Tip { text: edit.message; shown: mouse.containsMouse; pressed: mouse.pressed }
 
     ValueEdit { id: edit; owner: control; live: control.live }
 }

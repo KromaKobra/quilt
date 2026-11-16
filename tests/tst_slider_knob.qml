@@ -235,6 +235,26 @@ Item {
             compare(bipolar.position, 0.5);
         }
 
+        function test_knob_logarithmic() {
+            root.v = 200;
+            const k = make(knob, { from: 20, to: 20000, logarithmic: true, decimals: 0 });
+            fuzzyCompare(k.position, 1 / 3, 1e-9);      // 200 is a third of the way from 20 to 20000
+            mousePress(k, 20, 20);
+            mouseMove(k, 20, 17, -1, Qt.LeftButton);
+            mouseMove(k, 20, -83, -1, Qt.LeftButton);   // 100 px up: half the arc further
+            compare(root.v, Math.round(20 * Math.pow(1000, 1 / 3 + 0.5)));
+            mouseMove(k, 20, -500, -1, Qt.LeftButton);
+            compare(root.v, 20000);
+            mouseRelease(k, 20, -500);
+
+            root.v = 200;
+            k.forceActiveFocus(Qt.TabFocusReason);
+            keyClick(Qt.Key_Up);                        // a step is a hundredth of the arc, not of the range
+            compare(root.v, Math.round(20 * Math.pow(1000, 1 / 3 + 0.01)));
+            keyClick(Qt.Key_Down);
+            compare(root.v, 200);
+        }
+
         function test_knob_states() {
             const driven = make(knob, { paramState: Param.Driven });
             mousePress(driven, 20, 20);

@@ -22,6 +22,7 @@ QtObject {
     property color controlFill: dark ? "#3a3e47" : "#d2d6dc"    // filled part of a ranged field, a selected segment
     property color border: dark ? "#2d3037" : "#dadde2"         // hairlines, popup edges
     property color controlBorder: "transparent"                 // outline of every control; set for high contrast
+    property color shadow: dark ? "transparent" : Qt.rgba(0.1, 0.12, 0.16, 0.12)  // under popups; transparent: none
 
     // Text
     property color text: dark ? "#e4e6ea" : "#1b1d21"           // values, the current tab, section titles

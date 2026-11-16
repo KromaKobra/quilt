@@ -143,6 +143,9 @@ T.Control {
     implicitHeight: _stacked ? count * Theme.controlHeight + (count - 1) * 4 : Theme.controlHeight
     opacity: enabled ? 1 : 0.4
 
+    Accessible.role: Accessible.Grouping
+    Accessible.description: [copyText(), edit.stateText].filter(t => t !== "").join(", ")
+
     contentItem: Item {
         Grid {
             id: grid

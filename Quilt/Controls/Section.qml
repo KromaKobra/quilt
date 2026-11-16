@@ -97,6 +97,11 @@ Item {
         height: Theme.rowHeight
         activeFocusOnTab: true
 
+        Accessible.role: Accessible.Button
+        Accessible.name: section.title
+        Accessible.description: section._open ? qsTr("expanded") : qsTr("collapsed")
+        Accessible.onPressAction: section.toggle()
+
         Keys.onPressed: event => {
             if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
                 section.toggle();

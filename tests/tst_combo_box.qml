@@ -36,6 +36,27 @@ Item {
     }
     Component { id: refused; ComboBox { width: 160; model: root.blends; value: root.blend } }
     Component { id: stock; ComboBox { width: 160; model: root.blends } }
+    Component {
+        id: rich
+        ComboBox {
+            width: 160
+            model: [{ text: "Red", value: "r", color: "#f0616d" }, { text: "Green", value: "g", color: "#4fbf7b" },
+                    { separator: true },
+                    { text: "Locked", value: "l", icon: "lock", enabled: false }, { text: "Custom…", value: "c", icon: "settings" }]
+            value: root.blend
+            onEdited: v => root.blend = v
+        }
+    }
+    Component {
+        id: fonts
+        ComboBox {
+            width: 160
+            model: ["Arial", "Baskerville", "Bodoni", "Courier", "Didot", "Futura", "Garamond", "Georgia", "Gill Sans",
+                    "Helvetica", "Optima", "Palatino", "Rockwell", "Times", "Univers", "Verdana"]
+            value: root.blend
+            onEdited: v => root.blend = v
+        }
+    }
 
     TestCase {
         name: "ComboBox"
@@ -53,11 +74,32 @@ Item {
             return item;
         }
 
+        function find(item, predicate) {
+            if (predicate(item))
+                return item;
+            for (let i = 0; i < item.children.length; ++i) {
+                const found = find(item.children[i], predicate);
+                if (found)
+                    return found;
+            }
+            return null;
+        }
+
+        function options(combo) { return find(combo.popup.contentItem, i => i.objectName === "options"); }
+        function shownOptions(combo) {
+            const out = [];
+            for (let i = 0; i < combo.count; ++i) {
+                const option = options(combo).itemAtIndex(i);
+                if (option && option.visible && !option.separator)
+                    out.push(option.text);
+            }
+            return out;
+        }
+
         // Clicks the option at `index` of an open popup.
         function pick(combo, index) {
             tryVerify(() => combo.popup.opened);
-            const list = combo.popup.contentItem;
-            const option = list.itemAtIndex(index);
+            const option = options(combo).itemAtIndex(index);
             verify(option, "option " + index);
             mouseClick(option);
             tryVerify(() => !combo.popup.visible);
@@ -161,7 +203,7 @@ Item {
         function test_mixed() {
             const combo = make(bound, { paramState: Param.Mixed });
             compare(combo.currentIndex, -1);
-            compare(combo.contentItem.text, "Mixed");
+            compare(find(combo.contentItem, i => i.objectName === "shownText").text, "Mixed");
             mouseClick(combo);
             pick(combo, 1);
             compare(root.blend, "Multiply");
@@ -188,9 +230,154 @@ Item {
             mouseClick(combo);
             tryVerify(() => combo.popup.opened);
             verify(combo.popup.width > 150);
-            const option = combo.popup.contentItem.itemAtIndex(1);
-            verify(!option.contentItem.truncated);
+            const option = options(combo).itemAtIndex(1);
+            verify(!find(option.contentItem, i => i.objectName === "optionText").truncated);
             keyClick(Qt.Key_Escape);
+        }
+
+        function test_a_resting_pointer_does_not_steal_the_highlight() {
+            const combo = make(bound);
+            mouseMove(combo, 40, 70);           // where the list will open: over "Multiply"
+            combo.forceActiveFocus(Qt.TabFocusReason);
+            keyClick(Qt.Key_Space);
+            tryVerify(() => combo.popup.opened);
+            wait(50);
+            compare(combo._hi, 0);              // still on the current option
+            keyClick(Qt.Key_Down);
+            keyClick(Qt.Key_Return);
+            tryVerify(() => !combo.popup.visible);
+            compare(root.blend, "Multiply");
+        }
+
+        function test_space_chooses_the_highlighted_option() {
+            const combo = make(bound);
+            combo.forceActiveFocus(Qt.TabFocusReason);
+            keyClick(Qt.Key_Space);
+            tryVerify(() => combo.popup.opened);
+            keyClick(Qt.Key_End);
+            keyClick(Qt.Key_Up);
+            keyClick(Qt.Key_Space);
+            tryVerify(() => !combo.popup.visible);
+            compare(root.blend, "Darken");
+            compare(root.log, ["start", "Darken", "commit"]);
+        }
+
+        function test_hover_highlights_and_nothing_more() {
+            const combo = make(bound);
+            mouseClick(combo);
+            tryVerify(() => combo.popup.opened);
+            const option = options(combo).itemAtIndex(2);
+            mouseMove(option, 10, 5);
+            mouseMove(option, 12, 6);
+            tryVerify(() => option.highlighted);
+            compare(root.blend, "Normal");
+            compare(root.log, []);
+            keyClick(Qt.Key_Return);            // Enter takes what is highlighted
+            tryVerify(() => !combo.popup.visible);
+            compare(root.blend, "Screen");
+        }
+
+        // ---- options with marks, separators and disabled entries
+
+        function test_separators_and_disabled_options_are_skipped() {
+            root.blend = "g";
+            const combo = make(rich);
+            compare(combo.displayText, "Green");
+            combo.forceActiveFocus(Qt.TabFocusReason);
+            keyClick(Qt.Key_Down);              // over the separator and the disabled option
+            compare(root.blend, "c");
+            keyClick(Qt.Key_Up);
+            compare(root.blend, "g");
+
+            mouseClick(combo);
+            tryVerify(() => combo.popup.opened);
+            const list = options(combo);
+            verify(list.itemAtIndex(2).separator);
+            verify(list.itemAtIndex(2).height < 12);
+            verify(!list.itemAtIndex(3).enabled);
+            mouseClick(list.itemAtIndex(3));    // disabled: nothing happens, the list stays
+            wait(50);
+            verify(combo.popup.visible);
+            compare(root.blend, "g");
+            keyClick(Qt.Key_Down);
+            keyClick(Qt.Key_Return);
+            tryVerify(() => !combo.popup.visible);
+            compare(root.blend, "c");
+        }
+
+        function test_options_show_their_chip_or_icon() {
+            root.blend = "r";
+            const combo = make(rich);
+            const mark = find(combo.contentItem, i => i.chip !== undefined);
+            verify(mark.chip);                  // the chosen option's chip is shown in the field
+            verify(mark.width > 0);
+            root.blend = "c";
+            compare(mark.iconName, "settings");
+            const plain = make(bound, { y: 40 });
+            compare(find(plain.contentItem, i => i.chip !== undefined).width, 0);
+        }
+
+        // ---- filtering a long list
+
+        function test_typing_filters_a_long_list() {
+            root.blend = "Arial";
+            const combo = make(fonts);
+            verify(combo.filterable);
+            mouseClick(combo);
+            tryVerify(() => combo.popup.opened);
+            verify(find(combo.popup.contentItem, i => i.objectName === "filterBar").visible);
+
+            keyClick("g");
+            compare(combo.filterText, "g");
+            tryCompare(options(combo), "contentHeight", 3 * (Theme.controlHeight + 2));
+            compare(shownOptions(combo), ["Garamond", "Georgia", "Gill Sans"]);
+            keyClick("e");
+            compare(shownOptions(combo), ["Georgia"]);
+            keyClick(Qt.Key_Backspace);
+            compare(shownOptions(combo).length, 3);
+            compare(root.blend, "Arial");       // filtering chooses nothing
+
+            keyClick(Qt.Key_Down);              // the highlight stayed on Georgia; Down goes on
+            keyClick(Qt.Key_Return);
+            tryVerify(() => !combo.popup.visible);
+            compare(root.blend, "Gill Sans");
+        }
+
+        function test_filter_with_no_match_and_escape() {
+            root.blend = "Arial";
+            const combo = make(fonts);
+            mouseClick(combo);
+            tryVerify(() => combo.popup.opened);
+            keyClick("z");
+            keyClick("z");
+            compare(shownOptions(combo), []);
+            keyClick(Qt.Key_Return);            // nothing to choose
+            wait(30);
+            verify(combo.popup.visible);
+            keyClick(Qt.Key_Escape);            // first Esc clears the filter…
+            compare(combo.filterText, "");
+            verify(combo.popup.visible);
+            keyClick(Qt.Key_Escape);            // …the second closes the list
+            tryVerify(() => !combo.popup.visible);
+            compare(root.blend, "Arial");
+
+            mouseClick(combo);                  // it opens unfiltered again
+            tryVerify(() => combo.popup.opened);
+            compare(combo.filterText, "");
+            keyClick(Qt.Key_Escape);
+            tryVerify(() => !combo.popup.visible);
+        }
+
+        function test_short_lists_have_no_filter() {
+            const combo = make(bound);
+            verify(!combo.filterable);
+            mouseClick(combo);
+            tryVerify(() => combo.popup.opened);
+            verify(!find(combo.popup.contentItem, i => i.objectName === "filterBar").visible);
+            keyClick("s");
+            compare(combo.filterText, "");
+            keyClick(Qt.Key_Escape);
+            tryVerify(() => !combo.popup.visible);
         }
 
         function test_modified_reset_and_text() {

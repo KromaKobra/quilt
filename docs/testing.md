@@ -53,8 +53,9 @@ export QT_FORCE_STDERR_LOGGING=1
 From the repository root. `-I .` puts the `Quilt/` folder on the import path:
 
 ```sh
-qml6 -I . examples/minimal.qml       # four panels, the quick-start app
-qml6 -I . examples/sandbox.qml       # every feature + stateful panels to test against
+qml6 -I . examples/minimal.qml       # four panels and a small inspector: the quick-start app
+qml6 -I . examples/gallery.qml       # every control in every state, no docking
+qml6 -I . examples/sandbox.qml       # a small editor: every layer, stateful panels to test against
 ```
 
 Useful variations:
@@ -66,7 +67,9 @@ QT_QPA_PLATFORM=offscreen timeout 5 qml6 -I . examples/sandbox.qml   # smoke-loa
                                                                       # any QML error is printed, exit 124 = loaded fine
 ```
 
-**The sandbox.** Every panel holds live state so you can watch it survive moves:
+**The gallery** shows every control: a hand-built inspector on the left with a section of states (driven, mixed, invalid, read-only, disabled), and the controls that live outside a property grid on the right. Its View menu switches the light theme, high-contrast outlines and no-motion mode.
+
+**The sandbox** is a small editor of three shapes. Select a shape (Ctrl+click for several) and edit it in the Inspector, which is generated from `Quilt.Params` parameters; the card's rotation is linked to the cube's, and the disc's is driven by the timeline. Edit › Undo takes back one edit, however long the drag was. Every panel holds live state so you can watch it survive moves:
 
 - the viewport's animation never restarts
 - typed text in Inspector, Notes and documents stays put
@@ -83,7 +86,8 @@ It also has:
 - Save / Restore / Reset buttons
 - a live **Layout JSON** panel
 - a **Console** that logs every layout change
-- pop-outs with a custom toolbar (`windowComponent`)
+- frameless pop-outs with Quilt's title bar (`windowComponent`)
+- a Help panel listing the gestures
 
 ## Automated tests
 
@@ -91,7 +95,7 @@ It also has:
 ./run-tests.sh
 ```
 
-This runs `qmllint` over the module and examples, then every `tests/tst_*.qml` with the **offscreen** platform: no window appears, and it works over SSH and in CI. It exits non-zero on any failure. It also points `XDG_CONFIG_HOME` at a temporary directory, so the autosave test never touches your real settings.
+This runs `qmllint` over the modules and examples, then every `tests/tst_*.qml` with the **offscreen** platform: no window appears, and it works over SSH and in CI. It exits non-zero on any failure, including any lint message. It also points `XDG_CONFIG_HOME` at a temporary directory, so the autosave and section-state tests never touch your real settings.
 
 The same thing by hand:
 
@@ -113,8 +117,19 @@ To watch the integration tests run in a real window, drop `QT_QPA_PLATFORM=offsc
 
 | Suite | Covers |
 |---|---|
-| `tst_layout_tree.qml` (47 tests, pure JS, no window) | parse/serialize round trips; unknown/duplicate panels; flattening and collapsing; tab insert/reorder; remove with space hand-off; split into or around parents; edge docking; hint placement; drop no-ops; move/split/edge/empty drops; never losing a panel; non-tabbable panels (placement, drops, hit-testing, separating them in JSON layouts); min/max water-filling; overflow; layout rectangles and handles; maximize; pair resizing with clamps; handle hit-testing; linked lines; snap candidates; line resizing with shared limits; breaking a handle at shared cuts with geometry preserved; hit-test zones and gaps |
-| `tst_dock_area.qml` (36 tests, real components, offscreen windows) | initial layout from hints and `defaultLayout`; panels parented into stacks; tab clicks; dragging a split handle to its minimum; clicks reaching panel content; maximize; close/reopen keeping content state; reopen by hint; drops that split, insert into a tab bar, or dock at an edge; drops on the panel's own group; tear-off at the window border vs. cancel; non-movable panels; pop-out windows; docking into pop-outs; non-floatable refusal; auto-closing empty pop-outs; closing pop-outs (both policies); save/restore including windows; tolerant restore; autosave across a restart; runtime panels; minimum sizes; non-tabbable panels (own group, title bar, refused tabs, restore); real-mouse split-line drags: whole lines, Ctrl segments, breaking a full-length handle, snapping, no snapping with Ctrl |
+| `tst_layout_tree.qml` (pure JS, no window) | parse/serialize round trips; unknown/duplicate panels; flattening and collapsing; tab insert/reorder; remove with space hand-off; split into or around parents; edge docking; hint placement; drop no-ops; move/split/edge/empty drops; never losing a panel; non-tabbable panels; min/max water-filling; overflow; layout rectangles and handles; maximize; pair resizing with clamps; handle hit-testing; linked lines; snap candidates; line resizing with shared limits; breaking a handle at shared cuts; hit-test zones and gaps |
+| `tst_dock_area.qml` (real components, offscreen windows) | initial layout from hints and `defaultLayout`; tab clicks; split handles; maximize; close/reopen keeping content state; drops that split, insert or dock at an edge; tear-off vs. cancel; non-movable and non-floatable panels; pop-out windows and docking into them; closing pop-outs (both policies); save/restore including windows; tolerant restore; autosave across a restart; runtime panels; minimum sizes; non-tabbable panels; real-mouse split-line drags, Ctrl segments and snapping |
+| `tst_number_field.qml` | the drag threshold and axis lock; a click doesn't change the value; scrub speed, modifiers mid-drag, limits without dead travel; Esc restores; one transaction per gesture; typing, arithmetic, relative edits, units, suffixes, decimal commas; refused text stays with its reason; integer rounding and hard limits; keys and the wheel rule; ranged, logarithmic, wrapping and stepper modes; full precision kept behind the rounded display; modified, driven, mixed, read-only and disabled; parameter objects; copy and paste; a refused edit snaps back |
+| `tst_text_fields.qml` | `TextField` and `TextArea`: commit on Enter and focus loss, Esc, `live`, validators, mixed and driven text, the search variant, growing and scrolling |
+| `tst_toggles.qml` | `CheckBox`, `Switch`, `SegmentedButton` (exclusive and not): clicks and keys as transactions, mixed, driven, read-only, refused toggles snapping back |
+| `tst_combo_box.qml` | choosing by value or index; the list's keys, hover and Esc; options with icons, chips, separators and disabled entries; filtering a long list; the wheel rule; states; refused choices |
+| `tst_slider_knob.qml` | `Slider` and `Knob`: grabbing without a jump, track presses, the default-value magnet, Esc, keys, the wheel rule, typing into a knob, logarithmic knobs, states |
+| `tst_compound_fields.qml` | `VectorField` (value kinds, pasted lists, linked proportions, per-component states, stacking), `ColorField` and its picker (hex parsing, one visit is one edit, Esc restores, hue kept through grey), `DateField` (segments, typing, carrying, month lengths, the calendar) |
+| `tst_inspector.qml` | the label column and its divider; label clicks and label scrubbing; the modified dot and reset; the row menu and the Menu key; sections (toggle, Ctrl+click, keys, modified dot, saved state); filtering; narrow restacking; generated rows from arrays, `ListModel`s and parameter objects; row reuse across selections; custom delegates |
+| `tst_expression.qml` | the parser and evaluator: precedence, functions, constants, units, errors, lists, and that names such as `constructor` reach nothing |
+| `tst_params.qml` | `Parameter`, `ParameterSet`, `MergedParameter`: name lookup, dependency order, cycles and their recovery, add/remove at runtime, save/restore, merged values and edits; controls bound to parameters; the row menu's linking items (Copy Reference, Paste as Link, Edit and Remove Expression) |
+| `tst_chrome.qml` | `Button`, `IconButton` and tooltips; `Menu` and checkable actions following the application; submenus; the `TitleBar` (title, menus, slots, window buttons, resize edges); `ApplicationWindow`; scroll bar, progress bar, busy indicator; the theme switching, overriding and meeting its contrast targets in both themes |
+| `tst_accessibility.qml` | accessible roles, names taken from row labels, values and states described in words |
 
 ### What can't be automated
 
@@ -125,15 +140,25 @@ The platform drag loop (`Drag.Automatic`) needs a real compositor and a real poi
 - `area.dropped()`
 - `manager.finishDrag(action)`
 
-Each of those steps is tested, but the actual gesture on your desktop must be checked by hand; see the [manual checklist](#manual-test-checklist).
+Each of those steps is tested, but the actual gesture on your desktop must be checked by hand; see the [manual checklist](#manual-test-checklist). The same goes for:
+
+- **Window moving and resizing** from a frameless `TitleBar`. These hand the gesture to the window system (`startSystemMove`, `startSystemResize`), which the offscreen platform doesn't have.
+- **Double-clicking the title bar.** QtTest's simulated clicks never count as a double tap for a `TapHandler`, so the tests call `toggleMaximized()` directly.
+- **Popups as real windows** (`Theme.popupType = Popup.Window`), which depend on the platform.
+- **Screen readers.** The tests check the roles, names and descriptions Quilt sets; what a screen reader then says depends on the platform's accessibility bridge.
 
 ## Lint
 
+`run-tests.sh` lints every module and example and fails on any message. By hand:
+
 ```sh
-"$(qmake6 -query QT_INSTALL_BINS)/qmllint" -I . Quilt/*.qml examples/*.qml
+BIN="$(qmake6 -query QT_INSTALL_BINS)"
+"$BIN/qmllint" -I . Quilt/*.qml Quilt/Style/*.qml Quilt/Controls/*.qml Quilt/Params/*.qml examples/*.qml
 ```
 
-The module and examples lint clean; keep it that way.
+Qt 6.12's qmllint wrongly reports "not declared as singleton in qmldir" for a singleton linted as a file, so the script lints `Theme.qml`, `Expression.qml`, `Clipboard.qml` and `ColorHistory.qml` with `--import disable`. Linting the modules (`"$BIN/qmllint" -I . -M Quilt Quilt.Style Quilt.Controls Quilt.Params`) has no such problem.
+
+`examples/cpp-host/Main.qml` uses a C++ type, so it is linted by its CMake build instead: `cmake --build <dir> --target all_qmllint`.
 
 ## Quick experiments
 
@@ -193,6 +218,28 @@ QT_QPA_PLATFORM=offscreen QT_FORCE_STDERR_LOGGING=1 qml6 -I . shot.qml -- file:/
 
 Before grabbing, you can call the API to stage a state: `popOut(...)`, `toggleMaximized(...)`, or a simulated hover (`manager.beginDrag(panel, area); area.dragMoved(x, y)`) to render the drop preview.
 
+`grabToImage` captures one item, so it misses the window's menu bar and anything in a popup: menus, dropdown lists, the colour picker, tooltips. For those, `tools/quiltshot` is a small C++ program that loads a QML window, plays a script of clicks, keys and drags, and saves whole windows:
+
+```sh
+cmake -S tools/quiltshot -B build/quiltshot && cmake --build build/quiltshot
+cat > /tmp/menus.txt <<'END'
+wait 500
+click 66 17          # open the View menu
+wait 300
+shot /tmp/view-menu.png
+key Escape
+click 240 268        # open the Blend dropdown
+wait 300
+shot /tmp/dropdown.png
+eval Theme.dark = false
+wait 300
+shot /tmp/dropdown-light.png
+END
+QT_QPA_PLATFORM=offscreen QT_SCALE_FACTOR=2 build/quiltshot/quiltshot examples/gallery.qml /tmp/menus.txt
+```
+
+`main.cpp` lists every command. `QT_SCALE_FACTOR=2` checks the 2× rendering, where blurred hairlines and misaligned glyphs show.
+
 ## Debugging drags
 
 ```sh
@@ -237,7 +284,7 @@ Run `qml6 -I . examples/sandbox.qml` and go through the list. Do it on each plat
 - [ ] Drag that top half (no Ctrl) back near the bottom half. It snaps into line; drag again and both halves move together.
 - [ ] Ctrl-drag a half close to the other one. It does not snap.
 - [ ] Drag a line far past a panel's minimum. It stops, and the whole line stops with it.
-- [ ] Press **Reset**. "Tools" stays 52 px wide when the window is resized.
+- [ ] Press **Reset**. "Tools" stays 44 px wide when the window is resized.
 
 **Non-tabbable panels** ("Tools")
 
@@ -253,7 +300,7 @@ Run `qml6 -I . examples/sandbox.qml` and go through the list. Do it on each plat
 - [ ] Drag the last tab out of a pop-out back to the main window. The pop-out closes itself.
 - [ ] Close a pop-out with two panels in it. Both return to the main window.
 - [ ] "Status" (not floatable) has no pop-out button, gets no preview over a pop-out, and nothing happens when it is dropped outside.
-- [ ] Panels in pop-outs use the dark palette, and the pop-out shows its custom toolbar.
+- [ ] Pop-outs follow the theme (switch it with View › Dark Theme while one is open) and have Quilt's title bar. Drag it to move the window; drag its edges to resize.
 
 **Other**
 
@@ -265,6 +312,27 @@ Run `qml6 -I . examples/sandbox.qml` and go through the list. Do it on each plat
 - [ ] Close the main window while pop-outs are open. Everything closes and the app exits.
 - [ ] With `autoSaveKey` set (see `examples/cpp-host`), restart. The layout comes back.
 
+**Window** (`examples/sandbox.qml` and `examples/gallery.qml` are frameless)
+
+- [ ] Drag the title bar: the window moves. Double-click it: the window maximizes; again: it restores.
+- [ ] Drag each edge and each corner: the window resizes, with the matching cursor.
+- [ ] Minimize, maximize and close work. Close turns red under the pointer.
+- [ ] Open each menu with a click; move along the bar to switch menus; Alt+letter opens one; shortcuts shown in menus work (Ctrl+Z after an edit).
+- [ ] In the cpp-host example (system title bar), the menu bar shows no second title.
+
+**Controls** (in the gallery, then in an Inspector panel popped out into its own window)
+
+- [ ] Drag a number sideways: the cursor shows ↔ and the value follows from where the drag began, with no jump. Shift and Ctrl change speed mid-drag. Esc mid-drag restores it.
+- [ ] Scroll the inspector with the wheel over a number field: the panel scrolls, the value doesn't change. Click the field, then scroll: it steps.
+- [ ] Click a number, type `2*pi`, Enter. Type `abc`: the field keeps the text with a red ring and says why.
+- [ ] Open the Blend dropdown, the colour picker and the calendar near the bottom and right edges of the window: each stays fully visible.
+- [ ] In the colour picker, drag to black and back: the hue is kept. Esc restores the colour it opened with.
+- [ ] Hover a toolbar icon: its tooltip appears after a moment; move to the next icon: it appears at once. Click: it goes away.
+- [ ] Tab through the inspector: the focus ring moves through every control, sections included, and the view scrolls to follow.
+- [ ] Switch to the light theme and back: nothing keeps an old colour. Menus and dropdowns have a soft shadow in the light theme.
+- [ ] At 125% and 200% display scaling, hairlines and glyphs are sharp.
+- [ ] With a screen reader (Orca, Narrator, VoiceOver), tab through the inspector: each control is announced with its row label and value.
+
 ## Writing tests
 
 Tests are ordinary [Qt Quick Test](https://doc.qt.io/qt-6/qtquicktest-index.html) files named `tst_*.qml` in `tests/`.
@@ -274,3 +342,6 @@ Tests are ordinary [Qt Quick Test](https://doc.qt.io/qt-6/qtquicktest-index.html
 - **Drags:** see [What can't be automated](#what-cant-be-automated). Drops are applied via `Qt.callLater`, so check results with `tryVerify` / `tryCompare`.
 - **Pitfall.** The manager *reassigns* arrays (`windows`, `panelOrder`) rather than mutating them. `tryCompare(manager.windows, "length", 0)` keeps polling the old array; use `tryVerify(() => manager.windows.length === 0)`.
 - **Expected warnings** go in `ignoreWarning(/pattern/)` before the call that triggers them, so a clean run prints none of Quilt's own warnings.
+- **Control tests** create the control under test with `createTemporaryObject` in a `TestCase` with `when: windowShown`, and drive it with `mousePress`/`mouseMove`/`keyClick` as a user would. Bind its value to a property of the test's root item and record the transaction signals in a list, then compare the list: `["start", 0.7, "commit"]`.
+- **Popups** open asynchronously: wait with `tryVerify(() => popup.opened)` before clicking inside one.
+- **The theme is shared** by every test in the run. A test that changes a token puts it back, or uses a `Binding` that it switches off afterwards.

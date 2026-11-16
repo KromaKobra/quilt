@@ -80,11 +80,7 @@ T.Popup {
     enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.durationFast } }
     exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.durationFast } }
 
-    background: Rectangle {
-        radius: Theme.radius
-        color: Theme.raised
-        border.color: Theme.border
-    }
+    background: PopupBackground { }
 
     component Checker: Image {
         source: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAAAAADhZOFXAAAAFklEQVR42mPoAYI0IGDAwwARIA4eBgBBhB5BaFSA3gAAAABJRU5ErkJggg=="

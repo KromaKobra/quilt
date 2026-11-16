@@ -76,6 +76,10 @@ T.Control {
     implicitHeight: Theme.controlHeight
     opacity: enabled ? 1 : 0.4
 
+    Accessible.role: Accessible.ColorChooser
+    Accessible.description: [copyText(), edit.stateText].filter(t => t !== "").join(", ")
+    Accessible.onPressAction: openPicker()
+
     onValueChanged: if (_picker) _picker.sync(value)
 
     background: FieldFrame {

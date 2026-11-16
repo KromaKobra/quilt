@@ -48,6 +48,8 @@ T.CheckBox {
     hoverEnabled: true
     opacity: enabled ? 1 : 0.4
 
+    Accessible.description: edit.stateText
+
     font.family: Theme.fontFamily
     font.pixelSize: Theme.fontSize
 
@@ -102,7 +104,7 @@ T.CheckBox {
         elide: Text.ElideRight
     }
 
-    Tip { text: edit.message; shown: control.hovered }
+    Tip { text: edit.message; shown: control.hovered; pressed: control.down }
 
     ValueEdit { id: edit; owner: control; name: "checked"; fallback: false }
 }

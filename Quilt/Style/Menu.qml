@@ -62,12 +62,9 @@ T.Menu {
     enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.durationFast } }
     exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.durationFast } }
 
-    background: Rectangle {
+    background: PopupBackground {
         implicitWidth: 160
         implicitHeight: 8
-        radius: Theme.radius
-        color: Theme.raised
-        border.color: Theme.border
     }
 
     T.Overlay.modal: Rectangle { color: Theme.alpha(Theme.canvas, 0.5) }

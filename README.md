@@ -1,88 +1,123 @@
 # Quilt
 
-Quilt is a docking framework for Qt Quick tool applications. Every panel can be resized, rearranged, tabbed, maximized, and popped out into its own window. Each pop-out window is a full docking area, so you can spread one application across several monitors and dock more panels into each window.
+Quilt is a UI kit for panel-based tool applications built with Qt Quick: editors, DCC tools, IDE-like apps, anything made of inspectors, outliners, viewports and timelines. It solves the two problems such an app has that have nothing to do with what it edits:
 
-Quilt is pure QML: copy one folder and add `import Quilt`.
+- **Where the panels go.** Every panel can be resized, rearranged, tabbed, maximized, and popped out into its own window. Each pop-out window is a full docking area, so one application can spread across several monitors.
+- **How the user changes a value.** Number fields you can drag, type arithmetic into, or step; vectors, colours, dates, dropdowns, toggles; and a property grid that keeps thirty values readable at a glance. Every control follows one interaction grammar, can be undone in one step, and shows whether a value is modified, driven by an expression, mixed across a selection, or invalid.
+
+Quilt never owns your data. Controls show what your application holds and hand every edit back to it.
+
+![The sandbox example](docs/img/sandbox.png)
+
+Quilt is pure QML: copy one folder and import what you need.
 
 ```qml
 import QtQuick
-import QtQuick.Controls
 import Quilt
+import Quilt.Controls
 
 ApplicationWindow {
     width: 1200; height: 760; visible: true
 
+    QtObject { id: box; property real size: 160; property color fill: "#4c8dff" }
+
     DockArea {
         anchors.fill: parent
 
-        DockPanel { panelId: "viewport";  title: "Viewport";  Viewport { } }
-        DockPanel { panelId: "outliner";  title: "Outliner";  area: Dock.Left;   areaSize: 0.2;  Outliner { } }
-        DockPanel { panelId: "inspector"; title: "Inspector"; area: Dock.Right;  minimumWidth: 260; Inspector { } }
-        DockPanel { panelId: "timeline";  title: "Timeline";  area: Dock.Bottom; Timeline { } }
+        DockPanel {
+            panelId: "viewport"; title: "Viewport"
+            Rectangle { anchors.centerIn: parent; width: box.size; height: box.size; color: box.fill }
+        }
+        DockPanel {
+            panelId: "inspector"; title: "Inspector"; area: Dock.Right
+            Inspector {
+                anchors.fill: parent
+                PropertyRow { label: "Size"; NumberField { value: box.size; from: 10; to: 400; suffix: " px"; onEdited: v => box.size = v } }
+                PropertyRow { label: "Fill"; ColorField { value: box.fill; onEdited: c => box.fill = c } }
+            }
+        }
+        DockPanel { panelId: "timeline"; title: "Timeline"; area: Dock.Bottom }
     }
 }
 ```
 
-## Why
+## What's in it
 
-Most tool UIs are built from panel sections: inspectors, outliners, timelines, spline editors, media views. Those sections are usually fixed in place inside one window. Splitters let you nudge their sizes, but when your work shifts (from the timeline to the inspector, or to the media view), you can't get the space you need where you need it.
+| Module | What it gives you |
+|---|---|
+| `Quilt` | Docking: panels that split, tab, resize, maximize, pop out into windows, and save their arrangement |
+| `Quilt.Controls` | Value controls, the property grid (`Inspector`, `Section`, `PropertyRow`), a themed `ApplicationWindow` and a `TitleBar` with menus and window buttons |
+| `Quilt.Style` | The theme: dark and light token sets, icons, menus, tooltips. Docking and controls both read it |
+| `Quilt.Params` | Optional. A small parameter engine with expressions (`=cube.width / 2`), dependency tracking, cycle detection, save/restore for undo, and merged parameters for multiple selection |
 
-Quilt lets users arrange panels to fit what they're doing right now:
+Each layer works without the others: docking with your own controls, or the controls with no docking at all.
 
-- They can stack panels as tabs, split them side by side, or maximize one temporarily.
-- They can drag a panel onto a second monitor in its own window and keep docking other panels next to it.
-- The arrangement is saved and comes back on the next start.
+### Docking
 
-The defaults allow everything. Developers can restrict individual panels when they need to: fixed or limited sizes, panels that can't be popped out, panels that can't be moved, and panels that can't be closed.
+- **Rearrange by dragging tabs.** Drop a tab on any edge of another panel to split it, in the middle to add it as a tab, between tabs to reorder, or on the edge markers to dock along a whole side of the window. A live preview shows where it will land.
+- **Pop-out windows** that accept docked panels exactly like the main window, close themselves when emptied, and send their panels home when closed.
+- **State is never lost.** A panel is created once and only re-parented as it moves: text being edited, scroll positions, animations and GPU views survive every move.
+- **Split lines that behave like lines.** Dragging a gap moves the whole straight line, across every panel it borders. Ctrl-drag moves one segment; segments snap back into line. Minimum and maximum sizes are honoured.
+- **Save and restore** the whole arrangement, pop-outs included, as readable JSON. Autosave is one property.
+- **Per-panel restrictions:** `movable`, `floatable`, `closable`, `tabbable`, and size limits.
+- **Quiet chrome.** One surface per panel, text-only tabs with an underline, and panel buttons that appear on hover.
+- **Works on Wayland, X11, Windows and macOS.**
 
-## Features
+### Controls
 
-- **Rearrange by dragging tabs.** Drop a tab on any edge of another panel to split it, in the middle to add it as a tab, between tabs to reorder, or on the edge markers to dock along a whole side of the window. A live preview shows where the panel will land.
-- **Pop-out windows.** Drag a tab outside the window, or click its pop-out button. Pop-out windows accept docked panels exactly like the main window. They close themselves when emptied. Closing one sends its panels back to the main window.
-- **State is never lost.** A panel is created once and only re-parented as it moves. Text being edited, scroll positions, running animations and GPU views all survive every move.
-- **Split lines that behave like lines.** Dragging the gap between panels moves the whole straight line, across every panel it borders, so in a four-quadrant layout the middle line resizes all four. Ctrl-drag moves just one segment. A segment dragged close to another snaps back into line and moves with it again. Each panel's minimum and maximum size is honoured, including fixed sizes.
-- **Maximize** any panel within its window (double-click the tab), then restore it.
-- **Save and restore** the whole arrangement, pop-out windows included, as readable JSON. Autosave is one property. Panels added in later versions of your app are placed sensibly instead of disappearing.
-- **Per-panel restrictions.** The `movable`, `floatable`, `closable` and `tabbable` flags, plus `minimum*`/`maximum*` sizes. A panel that isn't tabbable keeps a group of its own, with a plain title bar.
-- **Themeable** through one `DockStyle` object. Transparent panels are supported.
-- **Works on Wayland, X11, Windows and macOS.** Dragging uses the platform's drag-and-drop, the only mechanism that crosses windows on Wayland.
+- **One grammar for every control.** Drag a number sideways (Shift ×10, Ctrl ×0.1), click to type, Up/Down to step, Esc to cancel, Enter to commit. The wheel only acts on a focused control, so scrolling past a field never changes it.
+- **Forgiving input.** `2*pi`, `(a+b)/2`, `+=10`, `5cm`, `1,5`, pasted lists such as `1, 2, 3`. Text that can't be read stays in the field with the reason, instead of being thrown away.
+- **The app owns the value.** Each control re-reads your value after every edit, so a clamped, rounded or refused edit shows what really happened.
+- **Edits are transactions.** `editStarted`, `edited`, `editFinished(committed)` on every control: a whole drag is one undo step.
+- **Visible state.** Modified (a dot that resets it), driven (`ƒ`), mixed, invalid, read-only. Each has a colour and a shape.
+- **A property grid** with one value column, a resizable label column, collapsible sections that remember their state, a row menu (reset, copy, paste, link), filtering, and narrow-panel restacking.
+- **A generated inspector.** Give it a list of parameter objects (QML, C++, a `ListModel` or an item model) and it builds the rows, reusing them when the selection changes.
+- **The set:** `NumberField` (also the inspector's slider and stepper), `TextField`, `TextArea`, `CheckBox`, `Switch`, `SegmentedButton`, `ComboBox`, `Slider`, `VectorField`, `ColorField` with a picker, `Knob`, `DateField`, `Button`, `IconButton`, `Menu`, `ToolTip`, `ScrollBar`, `ProgressBar`, `BusyIndicator`.
+- **Dark and light themes**, high-contrast outlines, no-motion mode, keyboard operation, and accessible names and states.
+
+![The gallery example: every control, in every state](docs/img/gallery-dark.png)
 
 ## Try it
 
 You need Qt 6.8 or newer (developed against 6.12). From the repository root:
 
 ```sh
-qml6 -I . examples/minimal.qml      # the snippet above, runnable
-qml6 -I . examples/sandbox.qml      # every feature, with stateful panels to test against
-./run-tests.sh                      # lint + 83 headless tests
+qml6 -I . examples/minimal.qml      # four panels and a small inspector
+qml6 -I . examples/gallery.qml      # every control, in every state
+qml6 -I . examples/sandbox.qml      # a small editor: docking, linked values, multi-selection, undo
+./run-tests.sh                      # lint + the headless test suite
 ```
 
-The `qml` runtime may be called `qml6` or `qml`, or it may only exist in Qt's bin directory (`qmake6 -query QT_INSTALL_BINS`). [docs/testing.md](docs/testing.md) covers this.
+The `qml` runtime may be called `qml6` or `qml`, or it may only exist in Qt's bin directory (`qmake6 -query QT_INSTALL_BINS`). [docs/testing.md](docs/testing.md) covers this. `examples/cpp-host/` is a CMake + C++ application that compiles Quilt in and edits a C++ object.
 
 ## Documentation
 
 | Document | What it covers |
 |---|---|
-| [Integration guide](docs/integration.md) | Adding Quilt to your app; panels, layouts, restrictions, persistence, pop-out windows, styling; API reference |
-| [Architecture](docs/architecture.md) | How it works: the layout tree, rendering, re-parenting, drag and drop, windows, persistence |
-| [Testing](docs/testing.md) | Running the QML directly, the automated tests, headless screenshots, debugging drags, the manual checklist |
+| [Docking guide](docs/integration.md) | Adding Quilt to your app; panels, layouts, restrictions, persistence, pop-out windows, styling; docking API reference |
+| [Controls guide](docs/controls-guide.md) | Controls, the property grid, undo, parameter states and objects, the generated inspector, `Quilt.Params`, the title bar, theming; controls API reference |
+| [Architecture](docs/architecture.md) | How it works: the layout tree, re-parenting, drag and drop, windows, persistence, the value plumbing, the parameter engine |
+| [Testing](docs/testing.md) | Running the QML directly, the automated tests, headless screenshots, the manual checklist |
+| [Scope](docs/scope.md) | What Quilt is, what it will never be, and the contracts between controls and your app |
+| [Controls design](docs/controls.md) | The interaction grammar and how each control behaves, and why |
+| [Visual design](docs/visual-design.md) | The look: rules, tokens, contrast figures |
 
 ## Repository layout
 
 ```
-Quilt/              the module — copy this folder into your project
-  DockArea.qml        public: a docking surface (one per window)
-  DockPanel.qml       public: a panel; its children are the content
-  DockStyle.qml       public: colours and metrics
-  DockWindow.qml      public: the pop-out window (customisable)
-  Dock.qml            public: enums (Dock.Left, Dock.ReturnPanels, ...)
-  DockManager.qml     internal: shared state, windows, drag session, persistence
-  DockStack.qml       internal: a tab group
-  SplitHandles.qml    internal: split lines (hover, drag, snapping)
-  LayoutTree.js       internal: the layout model (pure functions)
-  CMakeLists.txt      optional: build as a compiled QML module
-examples/           minimal.qml, sandbox.qml, cpp-host/ (CMake + C++ app)
-tests/              QtQuick.Test suites (run headless)
-docs/               the documentation above
-run-tests.sh        lint + tests
+Quilt/                the modules: copy this folder into your project
+  DockArea.qml          docking: a docking surface (one per window)
+  DockPanel.qml         docking: a panel; its children are the content
+  DockStyle.qml         docking: colours and metrics, defaulting to the theme
+  DockWindow.qml        docking: the pop-out window (customisable)
+  Dock.qml              docking: enums (Dock.Left, Dock.ReturnPanels, ...)
+  DockManager.qml, DockStack.qml, SplitHandles.qml, LayoutTree.js   docking internals
+  Style/                Quilt.Style: Theme, Icon, Menu, ToolTip, ...
+  Controls/             Quilt.Controls: the controls, the property grid, the title bar
+  Params/               Quilt.Params: Parameter, ParameterSet, MergedParameter
+  CMakeLists.txt        optional: build the modules into your binary
+examples/             minimal.qml, gallery.qml, sandbox.qml, cpp-host/ (CMake + C++ app)
+tests/                QtQuick.Test suites (run headless)
+docs/                 the documentation above
+run-tests.sh          lint + tests
 ```

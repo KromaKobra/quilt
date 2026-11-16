@@ -93,8 +93,23 @@ Item {
     // The Menu key, pressed in the row's control, opens the row menu.
     Keys.onMenuPressed: _openMenu(Theme.gutter + _labelWidth, height)
 
+    // The label is the control's accessible name, unless it was given one.
+    property string _named
+    function _nameControl() {
+        const item = row._ctl;
+        if (!item || label === "" || (item.Accessible.name !== "" && item.Accessible.name !== _named))
+            return;
+        item.Accessible.name = label;
+        _named = label;
+    }
+    onControlChanged: _nameControl()
+    onLabelChanged: _nameControl()
+
     onParentChanged: _findAncestors()
-    Component.onCompleted: _findAncestors()
+    Component.onCompleted: {
+        _findAncestors();
+        _nameControl();
+    }
     Component.onDestruction: _tally(false, false)
     onModifiedChanged: _tally(modified, _matches)
     on_MatchesChanged: _tally(modified, _matches)
@@ -138,7 +153,7 @@ Item {
             color: Theme.accent
             visible: dot.containsMouse
         }
-        Tip { text: qsTr("Reset to default"); shown: dot.containsMouse }
+        Tip { text: qsTr("Reset to default"); shown: dot.containsMouse; pressed: dot.pressed }
     }
 
     MouseArea {
@@ -210,7 +225,8 @@ Item {
         // The full label, only when it was cut; or the description.
         Tip {
             text: row.description !== "" ? row.description : (labelText.truncated ? row.label : "")
-            shown: labelArea.containsMouse && !labelArea.pressed
+            shown: labelArea.containsMouse
+            pressed: labelArea.pressed
         }
     }
 

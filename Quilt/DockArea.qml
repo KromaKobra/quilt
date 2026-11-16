@@ -448,7 +448,7 @@ Item {
     Text {
         anchors.centerIn: parent
         visible: area.root === null
-        text: area._dragOver ? "Drop to dock here" : "No panels open"
+        text: area._dragOver ? qsTr("Drop to dock here") : qsTr("No panels open")
         color: area.style.textFaint
         font.family: area.style.fontFamily
         font.pixelSize: area.style.fontPixelSize

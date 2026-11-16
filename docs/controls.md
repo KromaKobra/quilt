@@ -1,6 +1,6 @@
 # Controls: catalogue and interaction design
 
-This document lists every control planned for `Quilt.Controls` and specifies how each one behaves. It is a design document: nothing here is built yet, and property names are proposals. For what is in and out of the project, see [scope.md](scope.md). For colours, sizes and motion, see [visual-design.md](visual-design.md).
+This document lists every control in `Quilt.Controls` and specifies how each one behaves, and why. It began as the design for them; everything here is now built, except where a note says otherwise. For the API, see the [controls guide](controls-guide.md). For what is in and out of the project, see [scope.md](scope.md). For colours, sizes and motion, see [visual-design.md](visual-design.md).
 
 The goal is that a user never has to think about *how* to change a value. That comes from three things, in this order:
 
@@ -8,7 +8,7 @@ The goal is that a user never has to think about *how* to change a value. That c
 2. **No accidents.** A value changes only when the user clearly meant it to, and any change can be cancelled.
 3. **Visible state.** What a value is, and what will happen if you touch it, can be read without touching it.
 
-Numbers marked *(start)* are starting values to tune on a prototype. They are not final.
+Numbers marked *(start)* were starting values to tune on a prototype. The built controls use them, most as theme tokens or properties.
 
 - [Catalogue](#catalogue)
 - [Principles](#principles)
@@ -24,7 +24,7 @@ Numbers marked *(start)* are starting values to tune on a prototype. They are no
 
 ## Catalogue
 
-| Control | Edits | Built on | Milestone |
+| Control | Edits | Built on | Milestone (status) |
 |---|---|---|---|
 | [`Inspector`](#inspector) | Container for rows and sections | `Flickable` | 1 |
 | [`Section`](#section) | Expandable heading | `T.Control` | 1 |
@@ -38,7 +38,7 @@ Numbers marked *(start)* are starting values to tune on a prototype. They are no
 | [`Slider`](#slider) | A position along a range, outside the grid | `T.Slider` | 2 |
 | [`VectorField`](#vectorfield) | 2 to 4 numbers | `NumberField` × n | 3 |
 | [`ColorField`](#colorfield) | Colour, with a picker | `T.Control` + `T.Popup` | 3 |
-| [`MatrixField`](#matrixfield) | A small grid of numbers | `T.Control` | 5 |
+| [`MatrixField`](#matrixfield) | A small grid of numbers | `T.Control` | 5 (not built: deferred) |
 | [`Knob`](#knob) | A number, where space is tight | `T.Control` | 5 |
 | [`DateField`](#datefield) | Date, time | `T.Control` | 5 |
 | [`Button`, `IconButton`](#button-and-iconbutton) | Actions | `T.Button` | 2 |
@@ -104,7 +104,7 @@ Details that make the grammar dependable:
 - **No dead travel.** When a drag pushes a value against its limit and the pointer keeps going, reversing direction takes effect immediately. The user never has to "drag back" the overshoot.
 - **Modifiers can change mid-drag.** Pressing or releasing Shift or Ctrl changes the speed from that point on, without a jump.
 - **Wheel steps are whole notches.** High-resolution wheels and trackpads send many small deltas. They are accumulated into whole steps so a light swipe can't send a value flying.
-- **Shift and Ctrl mean the same thing** in a drag, with the arrow keys, and on the wheel. See [open decision 2](scope.md#open-decisions) for why these two keys.
+- **Shift and Ctrl mean the same thing** in a drag, with the arrow keys, and on the wheel. See [decision 2](scope.md#decisions) for why these two keys.
 
 ### Timing
 
@@ -211,11 +211,11 @@ An expandable heading.
 
 - **The whole header row toggles it**, not just the chevron. The chevron is a signifier, not the target.
 - **Keys.** Right expands, Left collapses, Space or Enter toggles. Ctrl+click toggles every section in the inspector at once.
-- **The header can carry** a `Switch` that enables the whole group, and a menu button shown on hover.
+- **The header can carry** items at its right (`accessory`): typically a `Switch` that enables the whole group (with `contentEnabled` bound to it), or a menu button.
 - **A collapsed section that contains modified values shows a dot** beside its title, so collapsing never hides the fact that something was changed.
 - **State persists.** Give a section a `key` and it remembers open or closed between runs, like the dock layout.
 - **Animation.** The chevron turns in 100 ms. Content height animates for small sections and switches instantly for large ones; a long section sliding open costs more than it explains.
-- **Content is created on first expand** and kept afterwards, so a closed section costs nothing at start-up and loses nothing when re-closed.
+- **Content is created with the section** (not on first expand, as first planned): rows are declared inline, so they exist from the start. A closed section draws nothing. An application with very large closed sections can put their rows in a `Loader` bound to `expanded`.
 - **Nesting.** One level of subsections. Deeper structure belongs in the app's own navigation.
 
 ### PropertyRow
@@ -344,10 +344,10 @@ For **one of many options**.
 - A click opens the list below the field (above when there is no room). The current option is marked and scrolled into view.
 - **Press, drag, release** selects in one motion, as menus do. Click, then click, also works.
 - The list is at least as wide as the field and grows to fit its longest option.
-- The list opens as a real window (Qt's `Popup.Window`), so it isn't clipped by a narrow panel or a small pop-out window.
-- With more than 12 options *(start)*, a filter field appears at the top. Typing narrows the list.
+- The list can open as a real window (Qt's `Popup.Window`, with `Theme.popupType`), so it isn't clipped by a narrow panel or a small pop-out window. The default keeps it inside the window, which behaves the same on every platform; the list then moves to stay within the window.
+- With more than 12 options (`filterThreshold`), typing while the list is open narrows it; what was typed shows at the top. The keyboard stays with the dropdown, so the arrow keys and Enter work while filtering.
 - Keys while closed: Up/Down change the option, typing a letter jumps to a match, Space or Enter opens. While open: Enter selects, Esc closes with no change.
-- Hovering an option highlights it and nothing more. Apps that want a live preview can listen for the highlight and must restore on Esc.
+- Hovering an option highlights it and nothing more, and only once the pointer moves: a list that opens under a resting pointer keeps the highlight the keyboard is steering.
 - Options can have icons or colour chips, separators, and disabled entries.
 
 ### VectorField
@@ -379,10 +379,12 @@ Behaviour:
 - **Hue and saturation are remembered.** Dragging to black, white or grey does not reset the hue to red. The picker keeps its own hue, saturation and value while open and only converts outward.
 - The hex field accepts `#fff`, `fff`, `#ffffffff`, `rgb(…)` and colour names.
 - In the square, Shift locks the drag to one axis and Ctrl slows it.
-- One picker exists per window, created the first time it is needed and shared by every colour field.
+- The picker is created when it opens and destroyed when it closes, so a closed picker costs nothing. (The plan was one shared picker per window; creating it on demand turned out simpler and as cheap.)
 - Colours are sRGB. HDR and wide-gamut editing, and picking from the screen, are [out of scope](scope.md#out-of-scope).
 
 ### MatrixField
+
+> **Not built.** It was left out of this release by request and is on the deferred list in [scope.md](scope.md#out-of-scope). The design below stands for when it is built.
 
 A small grid of numbers, up to about 6 × 6. A larger grid is a table, which is out of scope.
 
@@ -393,7 +395,7 @@ A small grid of numbers, up to about 6 × 6. A larger grid is a table, which is 
 - The row menu offers Reset to Identity for square matrices.
 - Optional row and column headers.
 
-See [open decision 3](scope.md#open-decisions) if "2D matrix input" meant a pad for picking a point instead.
+Neither this nor a pad for picking a 2D point is in this release; see [decision 3](scope.md#decisions).
 
 ### DateField
 
@@ -418,7 +420,7 @@ These exist so an app built on Quilt reads as one design. They keep Qt's API.
 
 - Rows are the control height. Shortcuts are shown dimmed at the right.
 - Items that can't apply are hidden in the row menu, and disabled in app menus, where a fixed position matters more.
-- Menus open as real windows, like dropdown lists.
+- Menus follow `Theme.popupType`, like dropdown lists.
 
 ### ToolTip
 
@@ -479,7 +481,7 @@ These are requirements on the implementation. Each one exists because breaking i
 
 **Stability**
 
-1. **Controls never write to their own `value`.** They display it and emit edits. This removes binding loops and the stale-control problem described in [scope.md](scope.md#1-the-app-owns-the-value).
+1. **Controls always show the application's value.** As built, a control writes its own `value` through a `Binding` that sets the application's binding aside and restores it after each edit (the plan said it would never write it). This removes binding loops and the stale-control problem described in [scope.md](scope.md#1-the-app-owns-the-value), and a control nobody listens to still works.
 2. **Nothing shifts.** Row heights are fixed. Gutters are reserved. Numerals are tabular. Scroll bars overlay. A state marker, an error or a hover never moves a neighbouring pixel.
 3. **An edit lands where it started.** The target is captured at `editStarted`. A pending edit is committed before the selection changes, before its panel is moved, tabbed away or closed, and before a popup's owner goes away.
 4. **Display never alters data.** Rounding is for showing. Stepping is counted in whole steps from the start value.
@@ -491,22 +493,22 @@ These are requirements on the implementation. Each one exists because breaking i
 
 8. **Input is answered in the same frame.** No handler waits on an animation or a timer before changing state.
 9. **Animations are interruptible** and never block the next input.
-10. **Created on demand.** Popups, pickers and menus are created when first opened. Section content is created on first expand. One picker and one row menu are shared per window.
+10. **Created on demand.** Popups, pickers, menus and tooltips are created when first opened; the picker, the calendar and tooltips are destroyed again when they close. (Section content, as built, is created with the section.)
 11. **Rows are reused.** A selection change updates values in place. It doesn't rebuild the inspector.
 12. **Controls are cheap.** A simple control is a few rectangles and a text item. No per-control shader effects, shadows or canvases.
 13. **Idle means idle.** No timers or animations run when nothing is happening, and none run for controls that aren't visible.
 14. **`live: false` exists everywhere.** For values that are expensive to apply, the app can ask for one `edited` at the end of a gesture instead of one per frame.
 
-**Targets** to verify once the controls exist: an inspector of 300 rows scrolls at the display's refresh rate, and switching between two objects of the same kind updates within one frame.
+**Targets** still to measure on real hardware: an inspector of 300 rows scrolls at the display's refresh rate, and switching between two objects of the same kind updates within one frame. (Row reuse, which the second depends on, is built and tested.)
 
 **Tests.** Every control has headless QtQuick.Test coverage for: a click doesn't change a number; the drag threshold; Esc restores the start value; the wheel is ignored without focus; exactly one `editStarted` and one `editFinished` per gesture; clamping; each parameter state; and the control showing the app's value after a refused edit.
 
 ## Accessibility
 
 - **Everything works from the keyboard.** Every control is reachable with Tab and operable without a pointer. Compound controls are a single Tab stop with arrow keys inside.
-- **Names and roles.** Each control sets its accessible role, takes its accessible name from the row label, and exposes its value and state as text ("Opacity, 62 percent, modified").
+- **Names and roles.** Each control sets its accessible role, takes its accessible name from the row label, and exposes its value and state as text (name "Opacity", description "62%, modified").
 - **Contrast.** Primary and secondary text meet WCAG AA (4.5:1). Tertiary text (placeholders, disabled values), state colours and focus rings meet 3:1 against what they sit on. The figures are in [visual-design.md](visual-design.md#colour).
 - **Never colour alone.** Every state has a shape as well as a colour.
 - **Reduced motion.** Setting the animation duration token to 0 switches off all motion.
-- **Scaling.** One token scales text and control sizes together, for users who need a larger interface.
+- **Scaling.** *Not built as one token.* Qt's `QT_SCALE_FACTOR` scales the whole interface; the `fontSize`, `controlHeight` and `rowHeight` tokens scale text and rows. A single scale token is on the deferred list.
 - **Translation.** Every built-in string (`Mixed`, menu items, tooltips) is translatable.

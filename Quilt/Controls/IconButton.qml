@@ -19,6 +19,8 @@ T.AbstractButton {
     hoverEnabled: true
     opacity: enabled ? 1 : 0.5
 
+    Accessible.name: tip                        // an icon has no text of its own
+
     // A checkable button goes back to showing what its `checked` is bound to.
     onToggled: Qt.callLater(rebind.refresh)
     Rebind { id: rebind; target: control; property: "checked" }
@@ -27,7 +29,7 @@ T.AbstractButton {
         Icon {
             anchors.centerIn: parent
             name: control.iconName
-            path: control.iconPath !== "" ? control.iconPath : (paths[name] ?? "")
+            path: control.iconPath
             color: control.checked ? Theme.accent
                  : control.hovered || control.down ? Theme.text : control.color
         }
@@ -50,5 +52,5 @@ T.AbstractButton {
         }
     }
 
-    Tip { text: control.tip; shown: control.hovered && !control.down }
+    Tip { text: control.tip; shown: control.hovered; pressed: control.down }
 }

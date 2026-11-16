@@ -73,6 +73,8 @@ T.Control {
     bottomPadding: 5
     opacity: enabled ? 1 : 0.4
 
+    Accessible.ignored: true                // the text item inside speaks for it
+
     font.family: Theme.fontFamily
     font.pixelSize: Theme.fontSize
 
@@ -103,6 +105,8 @@ T.Control {
             padding: 0
             wrapMode: TextEdit.Wrap
             selectByMouse: true
+            Accessible.name: control.Accessible.name
+            Accessible.description: edit.stateText
             color: !control.enabled ? Theme.textTertiary
                  : edit.mixed && !activeFocus ? "transparent"
                  : edit.driven ? Theme.driven : Theme.text
@@ -166,6 +170,13 @@ T.Control {
     }
 
     Tip { text: edit.message; shown: hover.hovered && !area.activeFocus }
+
+    // A press elsewhere in the window applies the text, as losing focus does.
+    PressOutside {
+        target: control
+        active: area.activeFocus
+        onPressed: area.focus = false
+    }
 
     ValueEdit { id: edit; owner: control; name: "text"; fallback: ""; live: control.live }
 }
