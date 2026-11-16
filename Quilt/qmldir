@@ -1,5 +1,8 @@
 module Quilt
 
+# Theme, Icon, Menu and ToolTip come along with `import Quilt`
+import Quilt.Style
+
 # Public API
 DockArea 1.0 DockArea.qml
 DockPanel 1.0 DockPanel.qml

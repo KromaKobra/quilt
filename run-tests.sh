@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Lints the Quilt module and examples, then runs the QML test suite headless.
+# Lints the Quilt modules and examples, then runs the QML test suite headless.
 #
 #   ./run-tests.sh                                       # everything
 #   ./run-tests.sh -input tests/tst_layout_tree.qml      # arguments replace "-input tests"
@@ -31,7 +31,21 @@ export XDG_CONFIG_HOME
 trap 'rm -rf "$XDG_CONFIG_HOME"' EXIT
 
 echo "== qmllint"
-"$QT_BIN/qmllint" -I . Quilt/*.qml examples/*.qml examples/cpp-host/Main.qml
+# qmllint wrongly reports "not declared as singleton in qmldir" for a
+# singleton linted as a file (Qt 6.12), so those four are linted without the
+# import category. -W 0 makes any other warning fail the run.
+SINGLETONS="Quilt/Style/Theme.qml Quilt/Controls/Expression.qml Quilt/Controls/Clipboard.qml Quilt/Controls/ColorHistory.qml"
+OTHERS=""
+for f in Quilt/*.qml Quilt/Style/*.qml Quilt/Controls/*.qml Quilt/Params/*.qml examples/*.qml examples/cpp-host/Main.qml; do
+    case " $SINGLETONS " in
+        *" $f "*) ;;
+        *) OTHERS="$OTHERS $f" ;;
+    esac
+done
+# shellcheck disable=SC2086
+"$QT_BIN/qmllint" -W 0 -I . $OTHERS
+# shellcheck disable=SC2086
+"$QT_BIN/qmllint" -W 0 -I . --import disable $SINGLETONS
 
 echo "== qmltestrunner"
 if [ "$#" -gt 0 ]; then

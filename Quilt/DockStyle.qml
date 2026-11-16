@@ -1,28 +1,39 @@
 import QtQuick
+import Quilt.Style
 
-// Colours and metrics for every DockArea in one docking system. Override
-// individual values on the main area, e.g. `style.accent: "#ff8a3d"`, or
-// assign a whole DockStyle { }. Pop-out windows share the main area's style.
+// Colours and metrics for every DockArea in one docking system. The defaults
+// come from Theme (Quilt.Style), so docking matches Quilt's controls and
+// follows Theme.dark. Override individual values on the main area, e.g.
+// `style.accent: "#ff8a3d"`, or assign a whole DockStyle { }. Pop-out
+// windows share the main area's style.
 QtObject {
     // Surfaces
-    property color background: "#111317"        // behind the panels, visible in the gaps
-    property color panel: "#1e2127"             // default DockPanel.background
-    property color tabBar: "#16181c"
-    property color tabHover: "#23262d"
+    property color background: Theme.canvas     // behind the panels, visible in the gaps
+    property color panel: Theme.surface         // default DockPanel.background
+    property color tabBar: panel                // the tab strip; one surface with the panel by default
+    property color tabHover: Theme.controlHover // behind a hovered tab-strip button
+    property color border: Theme.border         // the hairline under the tab strip
 
     // Text and highlights
-    property color text: "#d7dae0"
-    property color textDim: "#7f8591"
-    property color accent: "#4c8dff"
-    property color dropFill: Qt.rgba(accent.r, accent.g, accent.b, 0.22)
+    property color text: Theme.text             // the current tab
+    property color textDim: Theme.textSecondary // other tabs, glyphs
+    property color textFaint: Theme.textTertiary    // the current-tab underline of an inactive panel
+    property color accent: Theme.accent         // the active panel's underline, drop preview, split lines
+    property color dropFill: Qt.rgba(accent.r, accent.g, accent.b, 0.16)
 
     // Metrics
-    property real gap: 4                        // space between panels (0 for a seamless look)
-    property real radius: 6                     // corner radius of each panel
-    property real tabHeight: 30
+    property real gap: Theme.gap                // space between panels (0 for a seamless look)
+    property real radius: Theme.radius          // corner radius of each panel
+    property real tabHeight: Theme.tabHeight
     property real handleGrabSize: 8             // grab width of split handles, even when gap is 0
     property real snapDistance: 10              // a dragged split line snaps onto one this close
     property real dropIndicatorSize: 36         // the "dock at full edge" squares shown while dragging
-    property int fontPixelSize: 12
-    property int animationDuration: 160         // 0 disables layout animations
+    property string fontFamily: Theme.fontFamily
+    property int fontPixelSize: Theme.fontSize
+    property int textRenderType: Theme.textRenderType
+    property int animationDuration: Theme.durationLayout    // 0 disables layout animations
+
+    // Pop-out, maximize and close buttons appear when the pointer is over
+    // their tab strip. Set false to show them all the time.
+    property bool buttonsOnHover: true
 }

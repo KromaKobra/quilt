@@ -45,6 +45,7 @@ Item {
         DockArea {
             anchors.fill: parent
             style.animationDuration: 0
+            style.gap: 4                        // the pixel positions below assume it
             DockPanel { panelId: "a"; title: "A" }
             DockPanel { panelId: "b"; title: "B" }
             DockPanel { panelId: "c"; title: "C" }

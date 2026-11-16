@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Shapes
+import Quilt.Style
 
 // One tab group of a DockArea: a tab bar plus the content host that the
 // group's panels are parented into (only the current one is visible). A
@@ -106,256 +106,276 @@ Item {
     property bool _resetDrag: false
 
     // ---------------------------------------------------------------------
-    //  Background
+    //  Background: the tab strip and the content are one surface, parted by
+    //  a hairline.
 
     Rectangle {
-        id: tabBarBackground
         anchors { left: parent.left; right: parent.right; top: parent.top }
         height: stack.style.tabHeight
-        radius: stack.style.radius
+        topLeftRadius: stack.style.radius
+        topRightRadius: stack.style.radius
         color: stack.style.tabBar
-        Rectangle {
-            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-            height: Math.min(parent.radius, parent.height)
-            color: parent.color
-        }
     }
 
     Rectangle {
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; top: tabBarBackground.bottom }
-        radius: stack.style.radius
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; top: strip.bottom }
+        bottomLeftRadius: stack.style.radius
+        bottomRightRadius: stack.style.radius
         color: stack.currentPanel ? stack.currentPanel.background : stack.style.panel
-        Rectangle {
-            anchors { left: parent.left; right: parent.right; top: parent.top }
-            height: Math.min(parent.radius, parent.height)
-            color: parent.color
-        }
+    }
+
+    Rectangle {
+        anchors { left: parent.left; right: parent.right; bottom: strip.bottom }
+        height: 1
+        color: stack.style.border
     }
 
     // ---------------------------------------------------------------------
-    //  Tab bar
+    //  Tab strip
 
-    Flickable {
-        id: tabScroll
-        anchors { left: parent.left; right: buttons.visible ? buttons.left : parent.right; top: parent.top; leftMargin: 2 }
+    Item {
+        id: strip
+        anchors { left: parent.left; right: parent.right; top: parent.top }
         height: stack.style.tabHeight
-        visible: !stack.solo
-        contentWidth: tabRow.width
-        contentHeight: height
-        interactive: false
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
 
-        WheelHandler {
-            onWheel: event => {
-                const d = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x;
-                tabScroll.contentX = Math.max(0, Math.min(tabScroll.contentWidth - tabScroll.width,
-                                                          tabScroll.contentX - d / 2));
+        HoverHandler { id: stripHover }
+
+        Flickable {
+            id: tabScroll
+            anchors { left: parent.left; right: buttons.visible ? buttons.left : parent.right; top: parent.top; leftMargin: 2 }
+            height: stack.style.tabHeight       // not anchored: the Row needs it before its first layout
+            visible: !stack.solo
+            contentWidth: tabRow.width
+            contentHeight: height
+            interactive: false
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+
+            WheelHandler {
+                onWheel: event => {
+                    const d = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x;
+                    tabScroll.contentX = Math.max(0, Math.min(tabScroll.contentWidth - tabScroll.width,
+                                                              tabScroll.contentX - d / 2));
+                }
             }
-        }
 
-        Row {
-            id: tabRow
-            height: tabScroll.height
+            Row {
+                id: tabRow
+                height: tabScroll.height
 
-            Repeater {
-                id: tabs
-                model: stack.panelIds
+                Repeater {
+                    id: tabs
+                    model: stack.panelIds
 
-                delegate: Item {
-                    id: tab
-                    required property string modelData
-                    readonly property var panel: stack.manager ? stack.manager.panel(modelData) : null
-                    readonly property bool current: stack.currentId === modelData
-                    readonly property bool active: current && !!stack.manager && stack.manager.activePanel === panel
-                    readonly property bool hasIcon: !!panel && panel.icon.toString() !== ""
+                    // A tab is its title and nothing else: the current one is
+                    // brighter and underlined, in the accent colour when its
+                    // panel is the active one.
+                    delegate: Item {
+                        id: tab
+                        required property string modelData
+                        readonly property var panel: stack.manager ? stack.manager.panel(modelData) : null
+                        readonly property bool current: stack.currentId === modelData
+                        readonly property bool active: current && !!stack.manager && stack.manager.activePanel === panel
+                        readonly property bool hasIcon: !!panel && panel.icon.toString() !== ""
+                        readonly property real inset: 10
 
-                    width: Math.min(220, Math.max(56, label.implicitWidth + (hasIcon ? 20 : 0)
-                                                   + (closeButton.visible ? 22 : 0) + 22))
-                    height: tabRow.height
+                        // Sized for the heavier weight, so selecting a tab never
+                        // moves its neighbours.
+                        width: Math.min(220, Math.max(40, Math.ceil(measure.implicitWidth) + (hasIcon ? 20 : 0) + 2 * inset))
+                        height: tabRow.height
 
-                    Rectangle {
-                        anchors { fill: parent; topMargin: 3; leftMargin: 1; rightMargin: 1 }
-                        radius: stack.style.radius - 1
-                        color: tab.current ? (tab.panel ? tab.panel.background : stack.style.panel)
-                                           : (tabHover.hovered ? stack.style.tabHover : "transparent")
+                        Text {
+                            id: measure
+                            visible: false
+                            text: label.text
+                            font.family: stack.style.fontFamily
+                            font.pixelSize: stack.style.fontPixelSize
+                            font.weight: Font.Medium
+                            renderType: stack.style.textRenderType
+                        }
+
+                        Image {
+                            id: icon
+                            visible: tab.hasIcon
+                            source: tab.panel ? tab.panel.icon : ""
+                            anchors { left: parent.left; leftMargin: tab.inset; verticalCenter: parent.verticalCenter }
+                            width: 14
+                            height: 14
+                            sourceSize: Qt.size(28, 28)
+                            fillMode: Image.PreserveAspectFit
+                            opacity: tab.current || tabHover.hovered ? 1 : 0.7
+                        }
+
+                        Text {
+                            id: label
+                            anchors {
+                                left: tab.hasIcon ? icon.right : parent.left
+                                leftMargin: tab.hasIcon ? 6 : tab.inset
+                                right: parent.right
+                                rightMargin: tab.inset
+                                verticalCenter: parent.verticalCenter
+                            }
+                            text: tab.panel ? tab.panel.title : tab.modelData
+                            elide: Text.ElideRight
+                            color: tab.current || tabHover.hovered ? stack.style.text : stack.style.textDim
+                            font.family: stack.style.fontFamily
+                            font.pixelSize: stack.style.fontPixelSize
+                            font.weight: tab.current ? Font.Medium : Font.Normal
+                            renderType: stack.style.textRenderType
+                        }
+
                         Rectangle {
-                            anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-                            height: parent.radius
-                            color: parent.color
+                            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: tab.inset; rightMargin: tab.inset }
+                            height: 2
+                            radius: 1
+                            color: tab.active ? stack.style.accent : stack.style.textFaint
                             visible: tab.current
                         }
-                    }
 
-                    Rectangle {
-                        anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: 3; leftMargin: 6; rightMargin: 6 }
-                        height: 2
-                        radius: 1
-                        color: stack.style.accent
-                        visible: tab.active
-                    }
-
-                    Image {
-                        id: icon
-                        visible: tab.hasIcon
-                        source: tab.panel ? tab.panel.icon : ""
-                        anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter; verticalCenterOffset: 1 }
-                        width: 14
-                        height: 14
-                        sourceSize: Qt.size(28, 28)
-                        fillMode: Image.PreserveAspectFit
-                    }
-
-                    Text {
-                        id: label
-                        anchors {
-                            left: tab.hasIcon ? icon.right : parent.left
-                            leftMargin: tab.hasIcon ? 6 : 11
-                            right: closeButton.visible ? closeButton.left : parent.right
-                            rightMargin: closeButton.visible ? 2 : 11
-                            verticalCenter: parent.verticalCenter
-                            verticalCenterOffset: 1
+                        // Shown on hover only. It sits in the space between
+                        // tabs, over the end of the title, so no tab changes
+                        // width when it appears.
+                        IconButton {
+                            id: closeButton
+                            style: stack.style
+                            glyph: "close"
+                            tip: "Close"
+                            size: 16
+                            backdrop: stack.style.tabBar
+                            visible: !!tab.panel && tab.panel.closable && tabHover.hovered
+                            anchors { right: parent.right; rightMargin: -4; verticalCenter: parent.verticalCenter }
+                            onClicked: tab.panel.close()
                         }
-                        text: tab.panel ? tab.panel.title : tab.modelData
-                        elide: Text.ElideRight
-                        color: tab.current ? stack.style.text : stack.style.textDim
-                        font.pixelSize: stack.style.fontPixelSize
-                    }
 
-                    IconButton {
-                        id: closeButton
-                        style: stack.style
-                        glyph: "close"
-                        tip: "Close"
-                        visible: !!tab.panel && tab.panel.closable && (tab.current || tabHover.hovered)
-                        anchors { right: parent.right; rightMargin: 5; verticalCenter: parent.verticalCenter; verticalCenterOffset: 1 }
-                        onClicked: tab.panel.close()
-                    }
+                        HoverHandler { id: tabHover }
 
-                    HoverHandler { id: tabHover }
-
-                    TapHandler {
-                        gesturePolicy: TapHandler.DragThreshold
-                        onPressedChanged: if (pressed) stack.select(tab.modelData)
-                        onDoubleTapped: stack.manager.toggleMaximized(tab.modelData)
-                    }
-
-                    TapHandler {
-                        acceptedButtons: Qt.MiddleButton
-                        onTapped: if (tab.panel && tab.panel.closable) tab.panel.close()
-                    }
-
-                    TapHandler {
-                        acceptedButtons: Qt.RightButton
-                        onTapped: (eventPoint) => {
-                            stack.select(tab.modelData);
-                            tabMenu.panelId = tab.modelData;
-                            tabMenu.popup(tab, eventPoint.position.x, eventPoint.position.y);
+                        TapHandler {
+                            gesturePolicy: TapHandler.DragThreshold
+                            onPressedChanged: if (pressed) stack.select(tab.modelData)
+                            onDoubleTapped: stack.manager.toggleMaximized(tab.modelData)
                         }
-                    }
 
-                    DragHandler {
-                        id: tabDrag
-                        target: null
-                        enabled: !!tab.panel && tab.panel.movable && !stack._resetDrag
-                        onActiveChanged: if (active) stack.beginTabDrag(tab.panel, tabDrag)
+                        TapHandler {
+                            acceptedButtons: Qt.MiddleButton
+                            onTapped: if (tab.panel && tab.panel.closable) tab.panel.close()
+                        }
+
+                        TapHandler {
+                            acceptedButtons: Qt.RightButton
+                            onTapped: (eventPoint) => {
+                                stack.select(tab.modelData);
+                                tabMenu.panelId = tab.modelData;
+                                tabMenu.popup(tab, eventPoint.position.x, eventPoint.position.y);
+                            }
+                        }
+
+                        DragHandler {
+                            id: tabDrag
+                            target: null
+                            enabled: !!tab.panel && tab.panel.movable && !stack._resetDrag
+                            onActiveChanged: if (active) stack.beginTabDrag(tab.panel, tabDrag)
+                        }
                     }
                 }
             }
         }
-    }
 
-    // Title bar of a solo (non-tabbable) panel: same gestures as a tab.
-    Item {
-        id: titleBar
-        anchors { left: parent.left; right: buttons.visible ? buttons.left : parent.right; top: parent.top }
-        height: stack.style.tabHeight
-        visible: stack.solo
-        readonly property bool hasIcon: !!stack.currentPanel && stack.currentPanel.icon.toString() !== ""
+        // Title bar of a solo (non-tabbable) panel: same gestures as a tab,
+        // but there is nothing to select, so no underline.
+        Item {
+            id: titleBar
+            anchors { left: parent.left; right: buttons.visible ? buttons.left : parent.right; top: parent.top; bottom: parent.bottom }
+            visible: stack.solo
+            readonly property bool hasIcon: !!stack.currentPanel && stack.currentPanel.icon.toString() !== ""
 
-        Image {
-            id: titleIcon
-            visible: titleBar.hasIcon
-            source: stack.currentPanel ? stack.currentPanel.icon : ""
-            anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
-            width: 14
-            height: 14
-            sourceSize: Qt.size(28, 28)
-            fillMode: Image.PreserveAspectFit
-        }
-
-        Text {
-            anchors {
-                left: titleBar.hasIcon ? titleIcon.right : parent.left
-                leftMargin: titleBar.hasIcon ? 6 : 10
-                right: parent.right
-                rightMargin: 6
-                verticalCenter: parent.verticalCenter
+            Image {
+                id: titleIcon
+                visible: titleBar.hasIcon
+                source: stack.currentPanel ? stack.currentPanel.icon : ""
+                anchors { left: parent.left; leftMargin: 12; verticalCenter: parent.verticalCenter }
+                width: 14
+                height: 14
+                sourceSize: Qt.size(28, 28)
+                fillMode: Image.PreserveAspectFit
             }
-            text: stack.currentPanel ? stack.currentPanel.title : ""
-            elide: Text.ElideRight
-            color: stack.style.text
-            font.pixelSize: stack.style.fontPixelSize
-        }
 
-        TapHandler {
-            gesturePolicy: TapHandler.DragThreshold
-            onPressedChanged: if (pressed) stack.select(stack.currentId)
-            onDoubleTapped: stack.manager.toggleMaximized(stack.currentId)
-        }
+            Text {
+                anchors {
+                    left: titleBar.hasIcon ? titleIcon.right : parent.left
+                    leftMargin: titleBar.hasIcon ? 6 : 12
+                    right: parent.right
+                    rightMargin: 6
+                    verticalCenter: parent.verticalCenter
+                }
+                text: stack.currentPanel ? stack.currentPanel.title : ""
+                elide: Text.ElideRight
+                color: stack.style.textDim
+                font.family: stack.style.fontFamily
+                font.pixelSize: stack.style.fontPixelSize
+                renderType: stack.style.textRenderType
+            }
 
-        TapHandler {
-            acceptedButtons: Qt.MiddleButton
-            onTapped: if (stack.currentPanel.closable) stack.currentPanel.close()
-        }
+            TapHandler {
+                gesturePolicy: TapHandler.DragThreshold
+                onPressedChanged: if (pressed) stack.select(stack.currentId)
+                onDoubleTapped: stack.manager.toggleMaximized(stack.currentId)
+            }
 
-        TapHandler {
-            acceptedButtons: Qt.RightButton
-            onTapped: (eventPoint) => {
-                tabMenu.panelId = stack.currentId;
-                tabMenu.popup(titleBar, eventPoint.position.x, eventPoint.position.y);
+            TapHandler {
+                acceptedButtons: Qt.MiddleButton
+                onTapped: if (stack.currentPanel.closable) stack.currentPanel.close()
+            }
+
+            TapHandler {
+                acceptedButtons: Qt.RightButton
+                onTapped: (eventPoint) => {
+                    tabMenu.panelId = stack.currentId;
+                    tabMenu.popup(titleBar, eventPoint.position.x, eventPoint.position.y);
+                }
+            }
+
+            DragHandler {
+                id: titleDrag
+                target: null
+                enabled: stack.solo && stack.currentPanel.movable && !stack._resetDrag
+                onActiveChanged: if (active) stack.beginTabDrag(stack.currentPanel, titleDrag)
             }
         }
 
-        DragHandler {
-            id: titleDrag
-            target: null
-            enabled: stack.solo && stack.currentPanel.movable && !stack._resetDrag
-            onActiveChanged: if (active) stack.beginTabDrag(stack.currentPanel, titleDrag)
-        }
-    }
+        // Rare actions: shown while the pointer is over this strip (or always,
+        // with style.buttonsOnHover off). The tab menu and double-click do the
+        // same things without them. Their room is always kept, so tabs don't
+        // move when they appear.
+        Row {
+            id: buttons
+            anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
+            spacing: 2
+            visible: stack.width >= 150         // narrow stacks give the room to their tabs
+            opacity: !stack.style.buttonsOnHover || stripHover.hovered || stack.maximized ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: 80 } }
 
-    Row {
-        id: buttons
-        anchors { right: parent.right; rightMargin: 4; top: parent.top; topMargin: 1 }
-        height: stack.style.tabHeight
-        spacing: 2
-        visible: stack.width >= 150             // narrow stacks give the room to their tabs
-
-        IconButton {
-            style: stack.style
-            glyph: "popout"
-            tip: "Pop out into a new window"
-            anchors.verticalCenter: parent.verticalCenter
-            visible: !!stack.currentPanel && !!stack.manager && stack.manager.canFloat(stack.currentPanel)
-                     && (stack.area.isMain || stack.area.panelCount > 1)
-            onClicked: stack.manager.popOut(stack.currentId)
-        }
-        IconButton {
-            style: stack.style
-            glyph: stack.maximized ? "restore" : "maximize"
-            tip: stack.maximized ? "Restore" : "Maximize"
-            anchors.verticalCenter: parent.verticalCenter
-            visible: stack.maximized || stack.area.stackCount > 1
-            onClicked: stack.manager.toggleMaximized(stack.currentId)
-        }
-        IconButton {
-            style: stack.style
-            glyph: "close"
-            tip: "Close"
-            anchors.verticalCenter: parent.verticalCenter
-            visible: stack.solo && stack.currentPanel.closable
-            onClicked: stack.currentPanel.close()
+            IconButton {
+                style: stack.style
+                glyph: "popout"
+                tip: "Pop out into a new window"
+                visible: !!stack.currentPanel && !!stack.manager && stack.manager.canFloat(stack.currentPanel)
+                         && (stack.area.isMain || stack.area.panelCount > 1)
+                onClicked: stack.manager.popOut(stack.currentId)
+            }
+            IconButton {
+                style: stack.style
+                glyph: stack.maximized ? "restore" : "maximize"
+                tip: stack.maximized ? "Restore" : "Maximize"
+                visible: stack.maximized || stack.area.stackCount > 1
+                onClicked: stack.manager.toggleMaximized(stack.currentId)
+            }
+            IconButton {
+                style: stack.style
+                glyph: "close"
+                tip: "Close"
+                visible: stack.solo && stack.currentPanel.closable
+                onClicked: stack.currentPanel.close()
+            }
         }
     }
 
@@ -364,8 +384,35 @@ Item {
 
     Item {
         id: host
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; top: tabBarBackground.bottom }
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; top: strip.bottom }
         clip: true
+    }
+
+    // Panel content is clipped to a rectangle. These two pieces, in the
+    // colour behind the panels, round off its bottom corners. They are not
+    // drawn when that colour is see-through.
+    Repeater {
+        model: stack.style.radius > 0 && stack.style.background.a === 1 ? 2 : 0
+        delegate: Shape {
+            id: cap
+            required property int index
+            readonly property real r: stack.style.radius
+            x: index === 0 ? 0 : stack.width - r
+            y: stack.height - r
+            width: r
+            height: r
+            preferredRendererType: Shape.CurveRenderer
+            transform: Scale { origin.x: cap.r / 2; xScale: cap.index === 0 ? 1 : -1 }
+            ShapePath {
+                strokeWidth: -1
+                fillColor: stack.style.background
+                startX: 0
+                startY: 0
+                PathArc { x: cap.r; y: cap.r; radiusX: cap.r; radiusY: cap.r; direction: PathArc.Counterclockwise }
+                PathLine { x: 0; y: cap.r }
+                PathLine { x: 0; y: 0 }
+            }
+        }
     }
 
     // Observes presses on the content to track the active panel. A
@@ -409,48 +456,36 @@ Item {
     component IconButton: Item {
         id: button
         required property DockStyle style
-        property string glyph                  // close | popout | maximize | restore
+        property string glyph                  // an Icon name: close | popout | maximize | restore
         property string tip
+        property real size: 20
+        property color backdrop: "transparent"  // hides what the button sits over
         signal clicked()
 
-        width: 20
-        height: 20
+        width: size
+        height: size
 
         Rectangle {
             anchors.fill: parent
             radius: 4
-            color: button.style.text
-            opacity: hover.hovered ? 0.12 : 0
+            color: button.backdrop
+        }
+        Rectangle {
+            anchors.fill: parent
+            radius: 4
+            color: button.style.tabHover
+            visible: hover.hovered
         }
 
-        Shape {
+        Icon {
             anchors.centerIn: parent
-            width: 12
-            height: 12
-            preferredRendererType: Shape.CurveRenderer
-            ShapePath {
-                strokeColor: hover.hovered ? button.style.text : button.style.textDim
-                strokeWidth: 1.3
-                fillColor: "transparent"
-                capStyle: ShapePath.RoundCap
-                joinStyle: ShapePath.RoundJoin
-                PathSvg {
-                    path: {
-                        switch (button.glyph) {
-                        case "close": return "M 2.5 2.5 L 9.5 9.5 M 9.5 2.5 L 2.5 9.5";
-                        case "popout": return "M 5 2 H 2 V 10 H 10 V 7 M 7 2 H 10 V 5 M 10 2 L 5.5 6.5";
-                        case "maximize": return "M 2 2 H 10 V 10 H 2 Z";
-                        default: return "M 2 4.5 H 7.5 V 10 H 2 Z M 4.5 4.5 V 2 H 10 V 7.5 H 7.5";
-                        }
-                    }
-                }
-            }
+            name: button.glyph
+            size: 12
+            color: hover.hovered ? button.style.text : button.style.textDim
         }
 
         HoverHandler { id: hover }
         TapHandler { onTapped: button.clicked() }
-        ToolTip.visible: tip !== "" && hover.hovered
-        ToolTip.text: tip
-        ToolTip.delay: 700
+        Tip { text: button.tip; shown: hover.hovered }
     }
 }

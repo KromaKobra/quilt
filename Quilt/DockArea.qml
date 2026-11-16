@@ -449,8 +449,10 @@ Item {
         anchors.centerIn: parent
         visible: area.root === null
         text: area._dragOver ? "Drop to dock here" : "No panels open"
-        color: area.style.textDim
-        font.pixelSize: area.style.fontPixelSize + 1
+        color: area.style.textFaint
+        font.family: area.style.fontFamily
+        font.pixelSize: area.style.fontPixelSize
+        renderType: area.style.textRenderType
     }
 
     Repeater {
@@ -490,7 +492,7 @@ Item {
         height: shown.height
         radius: area.style.radius
         color: area.style.dropFill
-        border.width: 2
+        border.width: 1
         border.color: area.style.accent
         opacity: r ? 1 : 0
         visible: opacity > 0
@@ -517,10 +519,9 @@ Item {
             width: r.width
             height: r.height
             radius: 6
-            color: hot ? area.style.accent : area.style.tabBar
+            color: hot ? area.style.accent : area.style.panel
             border.width: 1
-            border.color: area.style.accent
-            opacity: 0.95
+            border.color: hot ? area.style.accent : area.style.border
 
             // A bar on the matching side of the square shows the edge.
             Rectangle {
@@ -530,7 +531,7 @@ Item {
                 width: indicator.vertical ? indicator.width * 0.3 : indicator.width - 2 * inset
                 height: indicator.vertical ? indicator.height - 2 * inset : indicator.height * 0.3
                 radius: 2
-                color: indicator.hot ? area.style.text : area.style.accent
+                color: indicator.hot ? area.style.panel : area.style.accent
             }
         }
     }

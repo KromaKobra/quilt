@@ -1,0 +1,14 @@
+module Quilt.Style
+
+# Design tokens
+singleton Theme 1.0 Theme.qml
+
+# Primitives that docking and controls both draw with
+Icon 1.0 Icon.qml
+Menu 1.0 Menu.qml
+MenuItem 1.0 MenuItem.qml
+MenuSeparator 1.0 MenuSeparator.qml
+Action 1.0 Action.qml
+ToolTip 1.0 ToolTip.qml
+Tip 1.0 Tip.qml
+Rebind 1.0 Rebind.qml
