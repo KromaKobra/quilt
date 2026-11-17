@@ -10,9 +10,8 @@ T.MenuSeparator {
     verticalPadding: 4
     horizontalPadding: 4
 
-    contentItem: Rectangle {
+    contentItem: Rule {
         implicitWidth: 120
         implicitHeight: 1
-        color: Theme.border
     }
 }

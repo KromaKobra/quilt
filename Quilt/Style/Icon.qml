@@ -11,7 +11,8 @@ import "Icons.js" as Icons
 // chevron-down/-up/-left/-right, arrow-down/-up/-left/-right, check, dash,
 // plus, minus, undo, redo, reset, copy, trash, link, unlink, search, filter,
 // settings, eye, eye-off, lock, unlock, info, help, warning, play, pause,
-// stop, calendar, folder, file, grid, layers. `names` lists them.
+// stop, calendar, folder, file, grid, layers. `names` lists them. A theme
+// may redraw any of them (Theme.icons) and sets the stroke and its caps.
 Item {
     id: icon
 
@@ -19,7 +20,7 @@ Item {
     property string path                    // SVG path data on a 12 x 12 grid; replaces `name`
     property color color: Theme.textSecondary
     property real size: Theme.glyphSize
-    property real strokeWidth: 1.3
+    property real strokeWidth: Theme.iconStrokeWidth
 
     readonly property var names: Icons.names()
 
@@ -34,11 +35,11 @@ Item {
         preferredRendererType: Shape.CurveRenderer
         ShapePath {
             strokeColor: icon.color
-            strokeWidth: icon.path === "" && Icons.dotted[icon.name] ? 1.7 : icon.strokeWidth
+            strokeWidth: icon.path === "" && Icons.dotted[icon.name] ? icon.strokeWidth + 0.4 : icon.strokeWidth
             fillColor: "transparent"
-            capStyle: ShapePath.RoundCap
-            joinStyle: ShapePath.RoundJoin
-            PathSvg { path: icon.path !== "" ? icon.path : Icons.path(icon.name) }
+            capStyle: Theme.iconCap
+            joinStyle: Theme._iconJoin
+            PathSvg { path: icon.path !== "" ? icon.path : Icons.path(icon.name, Theme.icons) }
         }
     }
 }

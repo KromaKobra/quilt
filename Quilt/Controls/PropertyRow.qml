@@ -142,7 +142,7 @@ Item {
             anchors.centerIn: parent
             width: 5
             height: 5
-            radius: 2.5
+            radius: width / 2
             color: Theme.accent
             visible: !dot.containsMouse
         }

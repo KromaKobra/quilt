@@ -285,7 +285,7 @@ ApplicationWindow {
             title: "Viewport"
             minimumWidth: 240
             minimumHeight: 160
-            background: Theme.dark ? "#121316" : "#eef0f3"
+            background: Theme.well
 
             Item {
                 id: scene

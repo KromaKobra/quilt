@@ -56,7 +56,10 @@ From the repository root. `-I .` puts the `Quilt/` folder on the import path:
 qml6 -I . examples/minimal.qml       # four panels and a small inspector: the quick-start app
 qml6 -I . examples/gallery.qml       # every control in every state, no docking
 qml6 -I . examples/sandbox.qml       # a small editor: every layer, stateful panels to test against
+qml6 -I . examples/try-theme.qml     # the gallery under a theme you edit
 ```
+
+[try-themes-and-layouts.md](try-themes-and-layouts.md) is a guide to trying looks and panel layouts in these examples.
 
 Useful variations:
 

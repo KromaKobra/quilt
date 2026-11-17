@@ -119,14 +119,10 @@ Item {
             color: Theme.rowHover
             visible: headerHover.hovered || header.activeFocus
         }
-        Rectangle {
-            anchors { fill: parent; margins: 1 }
-            color: "transparent"
-            radius: Theme.controlRadius
-            border.width: Theme.focusWidth
-            border.pixelAligned: false
-            border.color: Theme.accent
-            visible: header.activeFocus          // only Tab gives the header focus
+        FocusRing {
+            offset: -1
+            baseRadius: Theme.controlRadius + 1
+            shown: header.activeFocus           // only Tab gives the header focus
         }
 
         HoverHandler { id: headerHover }
@@ -145,7 +141,7 @@ Item {
             name: "chevron-down"
             size: 10
             rotation: section._open ? 0 : -90
-            Behavior on rotation { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
+            Behavior on rotation { NumberAnimation { duration: Theme.duration; easing.type: Theme.easing } }
         }
 
         Text {
@@ -156,9 +152,11 @@ Item {
             text: section.title
             elide: Text.ElideRight
             color: Theme.text
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontSize
+            font.family: Theme.fontFamilyTitle
+            font.pixelSize: Theme.fontSizeTitle
             font.weight: Theme.fontWeightStrong
+            font.capitalization: Theme.titleCapitalization
+            font.letterSpacing: Theme.titleLetterSpacing
             renderType: Theme.textRenderType
         }
 
@@ -167,7 +165,7 @@ Item {
             anchors { left: titleText.right; leftMargin: 8; verticalCenter: parent.verticalCenter }
             width: 5
             height: 5
-            radius: 2.5
+            radius: width / 2
             color: Theme.accent
             visible: section.hasModified && !section._open
         }
@@ -189,7 +187,7 @@ Item {
         // Small sections slide; a long one sliding open costs more than it explains.
         Behavior on height {
             enabled: section._animate && body.implicitHeight < 420 && Theme.duration > 0
-            NumberAnimation { duration: Theme.duration; easing.type: Easing.OutCubic }
+            NumberAnimation { duration: Theme.duration; easing.type: Theme.easing }
         }
 
         Column {
@@ -201,10 +199,9 @@ Item {
         }
     }
 
-    Rectangle {
+    Rule {
         visible: section.divider
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: 6 }
         height: 1
-        color: Theme.border
     }
 }

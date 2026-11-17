@@ -1,7 +1,10 @@
 // quiltshot <app.qml> <script.txt>
+// quiltshot compare <a.png> <b.png> [diff.png]
 //
 // Loads a QML file whose root is a Window, then runs the script line by
 // line and exits. Coordinates are in the current window's logical pixels.
+// The compare form prints how many pixels differ and exits 1 if any do,
+// writing the differing pixels in red over a faded `a` to diff.png.
 //
 //   wait <ms>                       let animations and timers run
 //   window <n>                      act on window n (0: the main one; then pop-outs, in order)
@@ -17,6 +20,9 @@
 //   eval <expression>               evaluate JavaScript in the root object's context, print the result
 //   shot <file.png>                 save the current window, popups included
 //   windows                         list the open windows
+//   frames <ms>                     count the frames the current window renders in <ms>, with
+//                                   the mean and longest interval between them (0 at idle is good)
+//   mem                             print the process's resident memory (Linux)
 //   # …                             a comment
 //
 // The QML import path is "." plus QUILT_IMPORT (colon-separated). With
@@ -27,7 +33,9 @@
 #include <QQmlContext>
 #include <QQmlExpression>
 #include <QQuickWindow>
+#include <QElapsedTimer>
 #include <QFile>
+#include <QImage>
 #include <QTest>
 #include <QTimer>
 
@@ -140,6 +148,27 @@ static bool run(const QStringList &lines)
         } else if (cmd == "windows") {
             for (int i = 0; windowAt(i); ++i)
                 qInfo().noquote() << i << windowAt(i)->title() << windowAt(i)->geometry();
+        } else if (cmd == "frames") {
+            QList<qint64> stamps;
+            QElapsedTimer clock;
+            clock.start();
+            const auto c = QObject::connect(win, &QQuickWindow::frameSwapped, win,
+                                            [&] { stamps << clock.nsecsElapsed(); }, Qt::DirectConnection);
+            QTest::qWait(rest.toInt());
+            QObject::disconnect(c);
+            double longest = 0;
+            for (qsizetype i = 1; i < stamps.size(); ++i)
+                longest = qMax(longest, (stamps[i] - stamps[i - 1]) / 1e6);
+            const double mean = stamps.size() > 1 ? (stamps.last() - stamps.first()) / 1e6 / (stamps.size() - 1) : 0;
+            qInfo().noquote() << QStringLiteral("frames: %1 in %2 ms, mean %3 ms, longest %4 ms")
+                                     .arg(stamps.size()).arg(rest.toInt()).arg(mean, 0, 'f', 1).arg(longest, 0, 'f', 1);
+        } else if (cmd == "mem") {
+            QFile status("/proc/self/status");
+            if (status.open(QIODevice::ReadOnly)) {
+                for (const QByteArray &l : status.readAll().split('\n'))
+                    if (l.startsWith("VmRSS:"))
+                        qInfo().noquote() << "mem:" << l.mid(6).trimmed();
+            }
         } else {
             qWarning().noquote() << "quiltshot: unknown command:" << line;
             ok = false;
@@ -149,8 +178,53 @@ static bool run(const QStringList &lines)
     return ok;
 }
 
+// Pixel-exact comparison of two images. Returns the number of pixels that
+// differ, or -1 when the images can't be compared at all.
+static qsizetype compareImages(const QString &pathA, const QString &pathB, const QString &diffPath)
+{
+    const QImage a = QImage(pathA).convertToFormat(QImage::Format_ARGB32);
+    const QImage b = QImage(pathB).convertToFormat(QImage::Format_ARGB32);
+    if (a.isNull() || b.isNull()) {
+        qWarning().noquote() << "quiltshot: can't read" << (a.isNull() ? pathA : pathB);
+        return -1;
+    }
+    if (a.size() != b.size()) {
+        qWarning().noquote() << "quiltshot: sizes differ:" << a.size() << b.size();
+        return -1;
+    }
+    QImage diff = a;
+    qsizetype count = 0;
+    for (int y = 0; y < a.height(); ++y) {
+        const QRgb *la = reinterpret_cast<const QRgb *>(a.constScanLine(y));
+        const QRgb *lb = reinterpret_cast<const QRgb *>(b.constScanLine(y));
+        QRgb *ld = reinterpret_cast<QRgb *>(diff.scanLine(y));
+        for (int x = 0; x < a.width(); ++x) {
+            if (la[x] != lb[x]) {
+                ++count;
+                ld[x] = qRgb(255, 0, 0);
+            } else {
+                const int g = qGray(la[x]) / 4 + 192;   // faded, so the red reads
+                ld[x] = qRgb(g, g, g);
+            }
+        }
+    }
+    if (count > 0 && !diffPath.isEmpty())
+        diff.save(diffPath);
+    return count;
+}
+
 int main(int argc, char *argv[])
 {
+    if (argc >= 4 && qstrcmp(argv[1], "compare") == 0) {
+        QGuiApplication app(argc, argv);
+        const qsizetype n = compareImages(app.arguments().at(2), app.arguments().at(3),
+                                          app.arguments().value(4));
+        if (n < 0)
+            return 2;
+        qInfo().noquote() << QStringLiteral("compare: %1 pixels differ").arg(n);
+        return n == 0 ? 0 : 1;
+    }
+
     QGuiApplication app(argc, argv);
     app.setOrganizationName("QuiltShot");
     app.setApplicationName("quiltshot");

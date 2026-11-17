@@ -33,15 +33,16 @@ T.ScrollBar {
         }
 
         // Thin at rest, full width under the pointer.
-        Rectangle {
+        Thumb {
             property real thickness: control.hovered || control.pressed ? 6 : 3
             x: control.horizontal ? 0 : parent.width - width
             y: control.horizontal ? parent.height - height : 0
             width: control.horizontal ? parent.width : thickness
             height: control.horizontal ? thickness : parent.height
             radius: thickness / 2
-            color: control.pressed ? Theme.textSecondary
-                 : control.hovered ? Theme.textTertiary : Theme.controlFill
+            scroll: true
+            hovered: control.hovered
+            pressed: control.pressed
             Behavior on thickness { NumberAnimation { duration: Theme.durationFast } }
         }
     }

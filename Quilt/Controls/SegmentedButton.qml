@@ -118,22 +118,10 @@ T.Control {
     Keys.onRightPressed: _move(1)
     Keys.onSpacePressed: if (!exclusive) choose(_cursor)
 
-    background: Rectangle {
-        radius: Theme.controlRadius
-        color: Theme.control
-        border.width: 1
-        border.color: Theme.controlBorder
-
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: -1
-            radius: parent.radius + 1
-            color: "transparent"
-            border.width: Theme.focusWidth
-            border.pixelAligned: false
-            border.color: Theme.accent
-            visible: control.visualFocus
-        }
+    background: Face {
+        role: Face.Track
+        focused: control.visualFocus
+        focusRing: true
     }
 
     contentItem: Item {
@@ -141,14 +129,15 @@ T.Control {
         readonly property real segment: control.count > 0 ? width / control.count : 0
 
         // The selection slides between segments.
-        Rectangle {
+        Face {
             visible: control.exclusive && control.currentIndex >= 0
             x: Math.max(0, control.currentIndex) * track.segment
             width: track.segment
             height: parent.height
-            radius: Theme.innerRadius
-            color: edit.driven ? Theme.mix(Theme.controlFill, Theme.driven, 0.35) : Theme.controlFill
-            Behavior on x { NumberAnimation { duration: Theme.duration; easing.type: Easing.OutCubic } }
+            role: Face.Segment
+            checked: true
+            driven: edit.driven
+            Behavior on x { NumberAnimation { duration: Theme.duration; easing.type: Theme.easing } }
         }
 
         Repeater {
@@ -170,13 +159,12 @@ T.Control {
                 Accessible.checked: on
                 Accessible.onPressAction: control.choose(index)
 
-                Rectangle {
+                Face {
                     anchors.fill: parent
-                    radius: Theme.innerRadius
-                    visible: !control.exclusive && (segment.on || (control.visualFocus && control._cursor === segment.index))
-                    color: segment.on ? Theme.controlFill : "transparent"
-                    border.width: control.visualFocus && control._cursor === segment.index ? 1 : 0
-                    border.color: Theme.accent
+                    visible: !control.exclusive && (segment.on || focused)
+                    role: Face.Segment
+                    checked: segment.on
+                    focused: control.visualFocus && control._cursor === segment.index
                 }
 
                 Row {

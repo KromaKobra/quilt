@@ -66,10 +66,11 @@ T.MenuItem {
         visible: !!control.subMenu
     }
 
-    background: Rectangle {
+    background: Face {
         implicitWidth: 120
-        radius: Theme.controlRadius
-        color: control.highlighted && control.enabled ? Theme.controlFill : "transparent"
+        implicitHeight: 0
+        role: Face.Item
+        hovered: control.highlighted && control.enabled
     }
 
     // A checkable row goes back to showing what its `checked` is bound to.

@@ -313,9 +313,9 @@ T.ComboBox {
                 elide: Text.ElideRight
             }
         }
-        background: Rectangle {
-            radius: Theme.controlRadius
-            color: option.highlighted && option.enabled ? Theme.controlFill : "transparent"
+        background: Face {
+            role: Face.Item
+            hovered: option.highlighted && option.enabled && !option.separator
             Icon {
                 x: 8
                 anchors.verticalCenter: parent.verticalCenter
@@ -324,11 +324,10 @@ T.ComboBox {
                 color: Theme.text
                 visible: option.current && !option.separator
             }
-            Rectangle {
+            Rule {
                 visible: option.separator
                 anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
                 height: 1
-                color: Theme.border
             }
         }
     }

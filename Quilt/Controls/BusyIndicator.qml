@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Shapes
 import QtQuick.Templates as T
 import Quilt.Style
 
@@ -51,28 +50,10 @@ T.BusyIndicator {
         opacity: control._shown ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: Theme.durationFast } }
 
-        Shape {
-            id: wheel
-            anchors.centerIn: parent
-            width: 16
-            height: 16
-            scale: Math.min(control.availableWidth, control.availableHeight) / 16
-            preferredRendererType: Shape.CurveRenderer
-            ShapePath {
-                strokeColor: control.color
-                strokeWidth: 1.8
-                fillColor: "transparent"
-                capStyle: ShapePath.RoundCap
-                PathAngleArc { centerX: 8; centerY: 8; radiusX: 6; radiusY: 6; startAngle: 0; sweepAngle: 270 }
-            }
-            // On the render thread: a spinner that freezes says "crashed".
-            RotationAnimator on rotation {
-                running: control._shown && control.visible
-                from: 0
-                to: 360
-                duration: 800
-                loops: Animation.Infinite
-            }
+        Spinner {
+            anchors.fill: parent
+            running: control._shown && control.visible
+            color: control.color
         }
     }
 }

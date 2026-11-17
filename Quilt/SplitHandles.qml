@@ -60,7 +60,7 @@ Item {
             y: line.vertical ? line.modelData.y : line.modelData.y + line.modelData.height / 2 - 1
             width: line.vertical ? 2 : line.modelData.width
             height: line.vertical ? line.modelData.height : 2
-            radius: 1
+            radius: Math.min(width, height) / 2
             color: handles.area.style.accent
             opacity: handles.area.resizing ? 0.9 : 0.45
         }

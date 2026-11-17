@@ -11,16 +11,6 @@ T.Button {
     property bool primary: false
     property string iconName
 
-    readonly property color _fill: {
-        if (primary)
-            return down ? Theme.mix(Theme.accent, Theme.accentInk, 0.18)
-                        : hovered ? Theme.mix(Theme.accent, Theme.text, 0.12) : Theme.accent;
-        if (down || checked)
-            return Theme.controlFill;
-        if (hovered)
-            return Theme.controlHover;
-        return flat ? "transparent" : Theme.control;
-    }
     readonly property color _ink: !enabled ? Theme.textTertiary : primary ? Theme.accentInk : Theme.text
 
     implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset, implicitContentWidth + leftPadding + rightPadding)
@@ -39,7 +29,12 @@ T.Button {
     onToggled: Qt.callLater(rebind.refresh)
     Rebind { id: rebind; target: control; property: "checked" }
 
+    // Pressed, the face and its label sink (Theme.pressTravel); what
+    // takes the click stays put.
+    Translate { id: travel; y: control.down ? Theme.pressTravel : 0 }
+
     contentItem: Item {
+        transform: travel
         implicitWidth: row.implicitWidth
         implicitHeight: row.implicitHeight
         Row {
@@ -63,22 +58,15 @@ T.Button {
         }
     }
 
-    background: Rectangle {
+    background: Face {
         implicitWidth: 24
-        radius: Theme.controlRadius
-        color: control._fill
-        border.width: control.primary ? 0 : 1
-        border.color: Theme.controlBorder
-
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: -1
-            radius: parent.radius + 1
-            color: "transparent"
-            border.width: Theme.focusWidth
-            border.pixelAligned: false
-            border.color: Theme.accent
-            visible: control.visualFocus
-        }
+        transform: travel
+        role: control.primary ? Face.Primary : Face.Button
+        hovered: control.hovered
+        pressed: control.down
+        checked: control.checked
+        flat: control.flat
+        focused: control.visualFocus
+        focusRing: true
     }
 }

@@ -13,7 +13,9 @@ import Quilt.Style
 //     }
 //
 // `frameless` removes the system's title bar and border; a TitleBar then
-// provides the window buttons, moving and resizing.
+// provides the window buttons, moving and resizing. A theme draws the
+// canvas with its `canvas` painter and may lay an `overlay` over the whole
+// window, popups included.
 T.ApplicationWindow {
     id: window
 
@@ -47,6 +49,13 @@ T.ApplicationWindow {
         toolTipText: Theme.text
     }
 
+    background: Surface {
+        slot: "canvas"
+        fill: Theme.canvas
+    }
+
     T.Overlay.modal: Rectangle { color: Theme.alpha(Theme.canvas, 0.6) }
     T.Overlay.modeless: Item { }
+
+    WindowOverlay { }
 }

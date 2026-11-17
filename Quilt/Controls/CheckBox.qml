@@ -58,39 +58,18 @@ T.CheckBox {
     nextCheckState: function() { return control.checkState; }
     onClicked: control._toggle()
 
-    indicator: Rectangle {
-        readonly property bool on: control.checked || edit.mixed
+    indicator: CheckIndicator {
         x: control.leftPadding
         y: Math.round((control.height - height) / 2)
         width: 14
         height: 14
-        radius: Theme.innerRadius
-        color: on ? (edit.driven ? Theme.driven : Theme.accent)
-                  : control.down ? Theme.controlHover : "transparent"
-        border.width: on ? 0 : 1.5
-        border.pixelAligned: false
-        border.color: control.hovered ? Theme.textSecondary : Theme.textTertiary
-        opacity: edit.readOnly ? 0.6 : 1
-
-        Icon {
-            anchors.centerIn: parent
-            visible: parent.on
-            name: edit.mixed ? "dash" : "check"
-            size: 10
-            strokeWidth: 1.8
-            color: Theme.accentInk
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: -2.5
-            radius: parent.radius + 2.5
-            color: "transparent"
-            border.width: Theme.focusWidth
-            border.pixelAligned: false
-            border.color: Theme.accent
-            visible: control.visualFocus
-        }
+        on: control.checked || edit.mixed
+        mixed: edit.mixed
+        driven: edit.driven
+        hovered: control.hovered
+        pressed: control.down
+        readOnly: edit.readOnly
+        focused: control.visualFocus
     }
 
     contentItem: Text {

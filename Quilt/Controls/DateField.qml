@@ -226,7 +226,7 @@ T.Control {
     Accessible.description: [displayText, edit.stateText].filter(t => t !== "").join(", ")
     Accessible.readOnly: _locked
 
-    font.family: Theme.fontFamily
+    font.family: Theme.fontFamilyValue
     font.pixelSize: Theme.fontSize
     font.features: ({ "tnum": 1 })
 
@@ -312,7 +312,7 @@ T.Control {
                         Rectangle {
                             anchors { fill: parent; leftMargin: -2; rightMargin: -2; topMargin: -1; bottomMargin: -1 }
                             z: -1
-                            radius: 2
+                            radius: Theme.controlRadius / 2
                             color: Theme.textSelection
                             visible: part.current
                         }
@@ -498,12 +498,12 @@ T.Control {
                             width: 26
                             height: 24
 
-                            Rectangle {
+                            Face {
                                 anchors { fill: parent; margins: 1 }
-                                radius: Theme.controlRadius
-                                color: cell.selected ? Theme.accent : cellHover.hovered ? Theme.controlFill : "transparent"
-                                border.width: cell.today && !cell.selected ? 1 : 0
-                                border.color: Theme.textTertiary
+                                role: Face.Item
+                                checked: cell.selected
+                                hovered: cellHover.hovered
+                                marked: cell.today
                             }
                             Text {
                                 anchors.centerIn: parent

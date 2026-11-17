@@ -1,0 +1,91 @@
+# Pixel baseline for examples/gallery.qml: every control at rest, focused,
+# hovered, and each kind of popup, in both themes. Run by pixel-check.sh,
+# which replaces @OUT@ with the output directory.
+#
+# Anything that moves on its own is frozen first, so two runs compare equal:
+# the busy indicator, the indeterminate progress bar and the clock field.
+eval (function f(i) { if (i.running === true && String(i).indexOf("BusyIndicator") >= 0) i.running = false; if (i.indeterminate === true) i.indeterminate = false; if (i.mode === "time") i.value = new Date(2026, 0, 1, 12, 34, 56); for (const c of i.children) f(c); return "frozen"; })(window.contentItem)
+wait 200
+shot @OUT@/gallery-dark.png
+
+# Keyboard focus through the first controls of the inspector
+key Tab
+wait 150
+shot @OUT@/gallery-dark-focus-1.png
+key Tab
+key Tab
+key Tab
+key Tab
+wait 150
+shot @OUT@/gallery-dark-focus-5.png
+key Tab
+key Tab
+key Tab
+key Tab
+key Tab
+key Tab
+key Tab
+wait 150
+shot @OUT@/gallery-dark-focus-12.png
+click 660 480
+wait 150
+
+# Hover
+move 473 108
+wait 200
+shot @OUT@/gallery-dark-hover-button.png
+move 696 108
+wait 900
+shot @OUT@/gallery-dark-tooltip.png
+move 660 600
+wait 300
+
+# Popups
+click 65 17
+wait 250
+shot @OUT@/gallery-dark-menu.png
+key Escape
+wait 200
+click 240 268
+wait 250
+shot @OUT@/gallery-dark-combo.png
+key Escape
+wait 200
+click 156 296
+wait 250
+shot @OUT@/gallery-dark-picker.png
+key Escape
+wait 200
+click 322 505
+wait 250
+shot @OUT@/gallery-dark-calendar.png
+key Escape
+wait 200
+click 40 240 right
+wait 250
+shot @OUT@/gallery-dark-context.png
+key Escape
+wait 200
+click 660 600
+wait 200
+
+# Light theme
+eval Theme.dark = false
+wait 250
+shot @OUT@/gallery-light.png
+move 473 108
+wait 200
+shot @OUT@/gallery-light-hover-button.png
+move 660 600
+wait 200
+click 65 17
+wait 250
+shot @OUT@/gallery-light-menu.png
+key Escape
+wait 200
+click 240 268
+wait 250
+shot @OUT@/gallery-light-combo.png
+key Escape
+wait 200
+eval Theme.dark = true

@@ -51,13 +51,7 @@ ApplicationWindow {
             Action { text: "High contrast"; checkable: true; checked: Theme.controlBorder.a > 0
                      onTriggered: Theme.controlBorder = Theme.controlBorder.a > 0 ? "transparent" : Theme.textTertiary }
             MenuSeparator { }
-            Action { text: "No motion"; checkable: true; checked: Theme.duration === 0
-                     onTriggered: {
-                         const off = Theme.duration !== 0;
-                         Theme.durationFast = off ? 0 : 80;
-                         Theme.duration = off ? 0 : 120;
-                         Theme.durationLayout = off ? 0 : 160;
-                     } }
+            Action { text: "No motion"; checkable: true; checked: Theme.reduceMotion; onTriggered: Theme.reduceMotion = !Theme.reduceMotion }
         }
     }
 

@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import Quilt.Style
 
 // The window a popped-out panel lives in. It hosts a full DockArea, so more
 // panels can be docked into it, and it closes itself when its last panel
@@ -35,6 +36,8 @@ ApplicationWindow {
         manager: window.manager
         style: window.manager.style
     }
+
+    WindowOverlay { }
 
     onClosing: window.manager.windowClosing(window)
 }

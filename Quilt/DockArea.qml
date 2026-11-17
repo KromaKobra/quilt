@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import Quilt.Style
 import "LayoutTree.js" as Tree
 
 // A docking surface. Declare one in your main window and put DockPanels in it:
@@ -440,9 +441,10 @@ Item {
     // ---------------------------------------------------------------------
     //  Visuals
 
-    Rectangle {
+    Surface {
         anchors.fill: parent
-        color: area.style.background
+        slot: "canvas"
+        fill: area.style.background
     }
 
     Text {
@@ -496,11 +498,11 @@ Item {
         border.color: area.style.accent
         opacity: r ? 1 : 0
         visible: opacity > 0
-        Behavior on opacity { NumberAnimation { duration: 90 } }
-        Behavior on x { id: fade; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
-        Behavior on y { enabled: fade.enabled; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
-        Behavior on width { enabled: fade.enabled; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
-        Behavior on height { enabled: fade.enabled; NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: Theme.durationFast } }
+        Behavior on x { id: fade; NumberAnimation { duration: Theme.durationFast; easing.type: area.style.easing } }
+        Behavior on y { enabled: fade.enabled; NumberAnimation { duration: Theme.durationFast; easing.type: area.style.easing } }
+        Behavior on width { enabled: fade.enabled; NumberAnimation { duration: Theme.durationFast; easing.type: area.style.easing } }
+        Behavior on height { enabled: fade.enabled; NumberAnimation { duration: Theme.durationFast; easing.type: area.style.easing } }
     }
 
     // "Dock along the whole edge" indicators, shown while a drag is over us.
@@ -518,7 +520,7 @@ Item {
             y: r.y
             width: r.width
             height: r.height
-            radius: 6
+            radius: Theme.controlRadius * 1.5
             color: hot ? area.style.accent : area.style.panel
             border.width: 1
             border.color: hot ? area.style.accent : area.style.border
@@ -530,7 +532,7 @@ Item {
                 y: indicator.modelData === "bottom" ? indicator.height - inset - height : inset
                 width: indicator.vertical ? indicator.width * 0.3 : indicator.width - 2 * inset
                 height: indicator.vertical ? indicator.height - 2 * inset : indicator.height * 0.3
-                radius: 2
+                radius: Theme.controlRadius / 2
                 color: indicator.hot ? area.style.panel : area.style.accent
             }
         }

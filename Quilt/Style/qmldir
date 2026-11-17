@@ -2,6 +2,22 @@ module Quilt.Style
 
 # Design tokens
 singleton Theme 1.0 Theme.qml
+ThemeSpec 1.0 ThemeSpec.qml
+Skins 1.0 Skins.qml
+
+# What controls and docking draw through, so a theme can redraw them
+Surface 1.0 Surface.qml
+Face 1.0 Face.qml
+FocusRing 1.0 FocusRing.qml
+CheckIndicator 1.0 CheckIndicator.qml
+SwitchIndicator 1.0 SwitchIndicator.qml
+Track 1.0 Track.qml
+Thumb 1.0 Thumb.qml
+DialFace 1.0 DialFace.qml
+Spinner 1.0 Spinner.qml
+TabFace 1.0 TabFace.qml
+Rule 1.0 Rule.qml
+WindowOverlay 1.0 WindowOverlay.qml
 
 # Primitives that docking and controls both draw with
 Icon 1.0 Icon.qml
@@ -13,3 +29,6 @@ Action 1.0 Action.qml
 ToolTip 1.0 ToolTip.qml
 Tip 1.0 Tip.qml
 Rebind 1.0 Rebind.qml
+
+# Implementation details
+internal Flash Flash.qml

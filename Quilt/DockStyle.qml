@@ -28,12 +28,18 @@ QtObject {
     property real handleGrabSize: 8             // grab width of split handles, even when gap is 0
     property real snapDistance: 10              // a dragged split line snaps onto one this close
     property real dropIndicatorSize: 36         // the "dock at full edge" squares shown while dragging
-    property string fontFamily: Theme.fontFamily
+    property string fontFamily: Theme.fontFamilyTitle      // tab titles
     property int fontPixelSize: Theme.fontSize
+    property int fontWeight: Theme.fontWeight              // other tabs
+    property int fontWeightStrong: Theme.fontWeightStrong  // the current tab
+    property int capitalization: Theme.titleCapitalization
+    property real letterSpacing: Theme.titleLetterSpacing
     property int textRenderType: Theme.textRenderType
     property int animationDuration: Theme.durationLayout    // 0 disables layout animations
+    property int easing: Theme.easing
 
     // Pop-out, maximize and close buttons appear when the pointer is over
-    // their tab strip. Set false to show them all the time.
-    property bool buttonsOnHover: true
+    // their tab strip. Set false to show them all the time. The theme
+    // decides by default.
+    property bool buttonsOnHover: Theme.hoverReveal
 }

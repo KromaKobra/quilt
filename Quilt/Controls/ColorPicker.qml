@@ -101,7 +101,7 @@ T.Popup {
             y: -2
             width: 6
             height: strip.height + 4
-            radius: 3
+            radius: width / 2
             color: "white"
             border.width: 1
             border.color: Qt.rgba(0, 0, 0, 0.55)
@@ -169,7 +169,7 @@ T.Popup {
                 y: Math.round((1 - picker.v) * square.height - height / 2)
                 width: 12
                 height: 12
-                radius: 6
+                radius: width / 2
                 color: picker.opaque
                 border.width: 2
                 border.color: "white"
@@ -222,7 +222,7 @@ T.Popup {
             onMoved: p => picker._set(Math.min(0.9999, p), picker.s, picker.v, picker.a)
             Rectangle {
                 anchors.fill: parent
-                radius: 6
+                radius: height / 2
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
                     GradientStop { position: 0 / 6; color: "#ff0000" }
@@ -243,7 +243,7 @@ T.Popup {
             Checker { x: 4; width: parent.width - 8; height: parent.height }
             Rectangle {
                 anchors.fill: parent
-                radius: 6
+                radius: height / 2
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
                     GradientStop { position: 0; color: Theme.alpha(picker.opaque, 0) }

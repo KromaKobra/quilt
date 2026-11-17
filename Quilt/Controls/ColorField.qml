@@ -131,6 +131,7 @@ T.Control {
             readOnly: control._locked
             paramState: edit.state
             text: ColorUtil.toHex(control._color, false)
+            font.family: Theme.fontFamilyValue
             font.features: ({ "tnum": 1 })
             // What can't be read as a colour is dropped: the field goes back
             // to showing the colour it has.

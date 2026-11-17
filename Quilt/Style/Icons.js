@@ -68,7 +68,10 @@ const paths = {
 // Glyphs made of dots need a heavier stroke to read at all.
 const dotted = { "more": true, "grip": true };
 
-function path(name) {
+// `overrides` is a theme's own name → path table (Theme.icons).
+function path(name, overrides) {
+    if (overrides && Object.prototype.hasOwnProperty.call(overrides, name))
+        return overrides[name];
     return Object.prototype.hasOwnProperty.call(paths, name) ? paths[name] : "";
 }
 

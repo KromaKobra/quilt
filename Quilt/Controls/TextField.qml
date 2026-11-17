@@ -90,6 +90,7 @@ T.TextField {
     selectionColor: Theme.textSelection
     selectedTextColor: Theme.text
     placeholderTextColor: Theme.textTertiary
+    cursorDelegate: Theme._ownCaret ? caret : null
     font.family: Theme.fontFamily
     font.pixelSize: Theme.fontSize
     renderType: Theme.textRenderType
@@ -203,4 +204,6 @@ T.TextField {
     }
 
     ValueEdit { id: edit; owner: control; name: "text"; fallback: ""; live: control.live }
+
+    Component { id: caret; Caret { } }
 }

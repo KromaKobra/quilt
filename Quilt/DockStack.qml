@@ -39,10 +39,10 @@ Item {
     y: rect ? rect.y : 0
     width: rect ? rect.width : 0
     height: rect ? rect.height : 0
-    Behavior on x { enabled: stack.area._animate; NumberAnimation { duration: stack.style.animationDuration; easing.type: Easing.OutCubic } }
-    Behavior on y { enabled: stack.area._animate; NumberAnimation { duration: stack.style.animationDuration; easing.type: Easing.OutCubic } }
-    Behavior on width { enabled: stack.area._animate; NumberAnimation { duration: stack.style.animationDuration; easing.type: Easing.OutCubic } }
-    Behavior on height { enabled: stack.area._animate; NumberAnimation { duration: stack.style.animationDuration; easing.type: Easing.OutCubic } }
+    Behavior on x { enabled: stack.area._animate; NumberAnimation { duration: stack.style.animationDuration; easing.type: stack.style.easing } }
+    Behavior on y { enabled: stack.area._animate; NumberAnimation { duration: stack.style.animationDuration; easing.type: stack.style.easing } }
+    Behavior on width { enabled: stack.area._animate; NumberAnimation { duration: stack.style.animationDuration; easing.type: stack.style.easing } }
+    Behavior on height { enabled: stack.area._animate; NumberAnimation { duration: stack.style.animationDuration; easing.type: stack.style.easing } }
 
     function select(panelId) {
         area.setCurrent(panelId);
@@ -109,25 +109,41 @@ Item {
     //  Background: the tab strip and the content are one surface, parted by
     //  a hairline.
 
-    Rectangle {
-        anchors { left: parent.left; right: parent.right; top: parent.top }
-        height: stack.style.tabHeight
-        topLeftRadius: stack.style.radius
-        topRightRadius: stack.style.radius
-        color: stack.style.tabBar
-    }
+    Surface {
+        id: chrome
+        anchors.fill: parent
+        slot: "panel"
+        radius: stack.style.radius
+        fill: stack.currentPanel ? stack.currentPanel.background : stack.style.panel
+        header: stack.style.tabHeight
+        headerFill: stack.style.tabBar
+        edge: Theme.panelOutline                // drawn by a theme's panel painter
+        edgeWidth: Theme.outlineWidth
+        active: !!stack.manager && !!stack.currentPanel && stack.manager.activePanel === stack.currentPanel
+        color: "transparent"                    // drawn by the parts below, or by the painter
+        border.width: 0
 
-    Rectangle {
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; top: strip.bottom }
-        bottomLeftRadius: stack.style.radius
-        bottomRightRadius: stack.style.radius
-        color: stack.currentPanel ? stack.currentPanel.background : stack.style.panel
-    }
-
-    Rectangle {
-        anchors { left: parent.left; right: parent.right; bottom: strip.bottom }
-        height: 1
-        color: stack.style.border
+        Rectangle {
+            visible: !chrome.skinned
+            anchors { left: parent.left; right: parent.right; top: parent.top }
+            height: chrome.header
+            topLeftRadius: chrome.radius
+            topRightRadius: chrome.radius
+            color: chrome.headerFill
+        }
+        Rectangle {
+            visible: !chrome.skinned
+            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; topMargin: chrome.header; top: parent.top }
+            bottomLeftRadius: chrome.radius
+            bottomRightRadius: chrome.radius
+            color: chrome.fill
+        }
+        Rectangle {
+            visible: !chrome.skinned
+            anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: chrome.header - 1 }
+            height: 1
+            color: stack.style.border
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -195,7 +211,9 @@ Item {
                             text: label.text
                             font.family: stack.style.fontFamily
                             font.pixelSize: stack.style.fontPixelSize
-                            font.weight: Font.Medium
+                            font.weight: stack.style.fontWeightStrong
+                            font.capitalization: stack.style.capitalization
+                            font.letterSpacing: stack.style.letterSpacing
                             renderType: stack.style.textRenderType
                         }
 
@@ -225,16 +243,20 @@ Item {
                             color: tab.current || tabHover.hovered ? stack.style.text : stack.style.textDim
                             font.family: stack.style.fontFamily
                             font.pixelSize: stack.style.fontPixelSize
-                            font.weight: tab.current ? Font.Medium : Font.Normal
+                            font.weight: tab.current ? stack.style.fontWeightStrong : stack.style.fontWeight
+                            font.capitalization: stack.style.capitalization
+                            font.letterSpacing: stack.style.letterSpacing
                             renderType: stack.style.textRenderType
                         }
 
-                        Rectangle {
-                            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: tab.inset; rightMargin: tab.inset }
-                            height: 2
-                            radius: 1
-                            color: tab.active ? stack.style.accent : stack.style.textFaint
-                            visible: tab.current
+                        TabFace {
+                            anchors.fill: parent
+                            current: tab.current
+                            active: tab.active
+                            hovered: tabHover.hovered
+                            inset: tab.inset
+                            accent: stack.style.accent
+                            faint: stack.style.textFaint
                         }
 
                         // Shown on hover only. It sits in the space between
@@ -269,8 +291,7 @@ Item {
                             acceptedButtons: Qt.RightButton
                             onTapped: (eventPoint) => {
                                 stack.select(tab.modelData);
-                                tabMenu.panelId = tab.modelData;
-                                tabMenu.popup(tab, eventPoint.position.x, eventPoint.position.y);
+                                stack.openTabMenu(tab.modelData, tab, eventPoint.position);
                             }
                         }
 
@@ -334,8 +355,7 @@ Item {
             TapHandler {
                 acceptedButtons: Qt.RightButton
                 onTapped: (eventPoint) => {
-                    tabMenu.panelId = stack.currentId;
-                    tabMenu.popup(titleBar, eventPoint.position.x, eventPoint.position.y);
+                    stack.openTabMenu(stack.currentId, titleBar, eventPoint.position);
                 }
             }
 
@@ -357,7 +377,7 @@ Item {
             spacing: 2
             visible: stack.width >= 150         // narrow stacks give the room to their tabs
             opacity: !stack.style.buttonsOnHover || stripHover.hovered || stack.maximized ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: 80 } }
+            Behavior on opacity { NumberAnimation { duration: Theme.durationFast } }
 
             IconButton {
                 style: stack.style
@@ -434,7 +454,19 @@ Item {
         }
     }
 
-    Menu {
+    // The tab's context menu, made the first time it is asked for: most tab
+    // groups never need one.
+    property Menu _tabMenu: null
+    function openTabMenu(panelId: string, item: Item, at: point) {
+        if (!_tabMenu)
+            _tabMenu = tabMenuComponent.createObject(stack) as Menu;
+        (_tabMenu as TabMenu).panelId = panelId;
+        _tabMenu.popup(item, at.x, at.y);
+    }
+
+    Component { id: tabMenuComponent; TabMenu { } }
+
+    component TabMenu: Menu {
         id: tabMenu
         property string panelId
         readonly property var panel: stack.manager ? stack.manager.panel(panelId) : null
@@ -465,6 +497,7 @@ Item {
         property string tip
         property real size: 20
         property color backdrop: "transparent"  // hides what the button sits over
+        readonly property bool skinned: Theme.skins.button !== null
         signal clicked()
 
         width: size
@@ -476,13 +509,15 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            radius: 4
-            color: button.backdrop
+            radius: Theme.controlRadius
+            color: button.skinned ? "transparent" : button.backdrop
         }
-        Rectangle {
+        Face {
             anchors.fill: parent
-            radius: 4
-            color: button.style.tabHover
+            role: Face.Tool
+            hovered: hover.hovered
+            pressed: tap.pressed
+            color: button.skinned ? "transparent" : button.style.tabHover
             visible: hover.hovered
         }
 

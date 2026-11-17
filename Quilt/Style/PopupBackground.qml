@@ -8,16 +8,18 @@ import QtQuick
 //
 // With Theme.shadow set (the light theme sets it) it casts a soft shadow,
 // drawn as a few widening rings rather than with a shader. The dark theme
-// has none: a lighter surface already reads as nearer there.
-Rectangle {
+// has none: a lighter surface already reads as nearer there. A theme
+// redraws it with `skins.popup` (`skins.toolTip` for a tooltip's).
+Surface {
     id: surface
 
+    slot: "popup"
     radius: Theme.radius
-    color: Theme.raised
-    border.color: Theme.border
+    fill: Theme.raised
+    edge: Theme.border
 
     Repeater {
-        model: Theme.shadow.a > 0 ? 4 : 0
+        model: !surface.skinned && Theme.shadow.a > 0 ? 4 : 0
         delegate: Rectangle {
             required property int index
             readonly property real spread: index + 1

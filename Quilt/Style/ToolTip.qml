@@ -39,6 +39,7 @@ T.ToolTip {
     }
 
     background: PopupBackground {
+        slot: "toolTip"
         radius: Theme.controlRadius + 2
     }
 }

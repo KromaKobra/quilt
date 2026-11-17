@@ -1,6 +1,5 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Shapes
 import QtQuick.Templates as T
 import Quilt.Style
 
@@ -143,73 +142,19 @@ T.Control {
     }
 
     contentItem: Item {
-        Item {
+        DialFace {
             id: dial
             anchors.horizontalCenter: parent.horizontalCenter
             y: 3
             width: control.size
             height: control.size
-
-            readonly property real r: control.size / 2 - 2.5
-            // The arc runs 270 degrees, clockwise from lower left, with the gap at the bottom.
-            readonly property real angle: 135 + 270 * control.position
-            readonly property real origin: control.bipolar ? 270 : 135
-            readonly property color ink: edit.driven ? Theme.driven : Theme.accent
-
-            Shape {
-                anchors.fill: parent
-                preferredRendererType: Shape.CurveRenderer
-                ShapePath {
-                    strokeColor: mouse.containsMouse || control._dragging
-                                 ? Theme.mix(Theme.controlFill, Theme.text, 0.12) : Theme.controlFill
-                    strokeWidth: 3
-                    fillColor: "transparent"
-                    capStyle: ShapePath.RoundCap
-                    PathAngleArc {
-                        centerX: dial.width / 2; centerY: dial.height / 2
-                        radiusX: dial.r; radiusY: dial.r
-                        startAngle: 135; sweepAngle: 270
-                    }
-                }
-                ShapePath {
-                    strokeColor: edit.mixed ? "transparent" : dial.ink
-                    strokeWidth: 3
-                    fillColor: "transparent"
-                    capStyle: ShapePath.RoundCap
-                    PathAngleArc {
-                        centerX: dial.width / 2; centerY: dial.height / 2
-                        radiusX: dial.r; radiusY: dial.r
-                        startAngle: dial.origin; sweepAngle: dial.angle - dial.origin
-                    }
-                }
-            }
-
-            // The pointer: a short line aimed at the value.
-            Item {
-                visible: !edit.mixed
-                x: dial.width / 2
-                y: dial.height / 2
-                rotation: dial.angle
-                transformOrigin: Item.TopLeft
-                Rectangle {
-                    x: dial.r * 0.3
-                    y: -1
-                    width: dial.r * 0.7 - 3.5
-                    height: 2
-                    radius: 1
-                    color: Theme.text
-                }
-            }
-
-            Rectangle {
-                anchors { fill: parent; margins: -2 }
-                radius: width / 2
-                color: "transparent"
-                border.width: Theme.focusWidth
-                border.pixelAligned: false
-                border.color: Theme.accent
-                visible: control.activeFocus
-            }
+            position: control.position
+            origin: control.bipolar ? 0.5 : 0
+            mixed: edit.mixed
+            driven: edit.driven
+            hovered: mouse.containsMouse
+            pressed: control._dragging
+            focused: control.activeFocus
         }
 
         Text {
@@ -224,7 +169,8 @@ T.Control {
             text: numeric ? control.displayText : control.text
             elide: Text.ElideRight
             color: numeric && edit.driven ? Theme.driven : numeric ? Theme.text : Theme.textSecondary
-            font: control.font
+            font.family: numeric ? Theme.fontFamilyValue : control.font.family
+            font.pixelSize: control.font.pixelSize
             renderType: Theme.textRenderType
         }
     }

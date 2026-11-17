@@ -358,7 +358,7 @@ T.Control {
     Accessible.onIncreaseAction: increase()
     Accessible.onDecreaseAction: decrease()
 
-    font.family: Theme.fontFamily
+    font.family: Theme.fontFamilyValue
     font.pixelSize: Theme.fontSize
     font.features: ({ "tnum": 1 })              // digits of equal width: nothing shifts while dragging
 
@@ -399,17 +399,22 @@ T.Control {
         focused: control.focused && !control.flat
         invalid: (edit.invalid || control._inputError !== "") && !control.flat
         flat: control.flat || edit.readOnly
-
+        driven: edit.driven
         // The slider part: how far along the soft range the value is.
+        leveled: control.ranged && !edit.mixed && !control.flat && !control.editing
+        level: control.position
+        levelActive: control._scrub
+
         Rectangle {
-            visible: control.ranged && !edit.mixed && !control.flat && !control.editing
-            width: Math.round(parent.width * control.position)
+            z: 3                                // over the ring, as before
+            visible: frame.leveled && !frame.skinned
+            width: Math.round(parent.width * frame.level)
             height: parent.height
             topLeftRadius: parent.radius
             bottomLeftRadius: parent.radius
-            topRightRadius: control.position >= 1 ? parent.radius : 0
+            topRightRadius: frame.level >= 1 ? parent.radius : 0
             bottomRightRadius: topRightRadius
-            color: control._scrub ? Theme.mix(Theme.controlFill, Theme.accent, 0.45)
+            color: frame.levelActive ? Theme.mix(Theme.controlFill, Theme.accent, 0.45)
                  : frame.hovered ? Theme.mix(Theme.controlFill, Theme.text, 0.1) : Theme.controlFill
         }
     }
@@ -481,6 +486,7 @@ T.Control {
             visible: false
             clip: true
             selectByMouse: true
+            cursorDelegate: Theme._ownCaret ? caret : null
             horizontalAlignment: control.steppers ? TextInput.AlignHCenter : TextInput.AlignLeft
             color: Theme.text
             selectionColor: Theme.textSelection
@@ -601,11 +607,12 @@ T.Control {
         onReleased: repeat.stop()
         onCanceled: repeat.stop()
 
-        Rectangle {
+        Face {
             anchors.fill: parent
             anchors.margins: 2
-            radius: Theme.innerRadius
-            color: Theme.controlFill
+            role: Face.Step
+            hovered: button.containsMouse
+            pressed: button.pressed
             visible: button.pressed || button.containsMouse
             opacity: button.pressed ? 1 : 0.6
         }
@@ -653,4 +660,6 @@ T.Control {
     }
 
     ValueEdit { id: edit; owner: control; live: control.live }
+
+    Component { id: caret; Caret { } }
 }

@@ -3,7 +3,7 @@
 
 set_source_files_properties(Expression.qml ColorHistory.qml Clipboard.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
-set_source_files_properties(ValueEdit.qml FieldFrame.qml ColorPicker.qml PressOutside.qml
+set_source_files_properties(ValueEdit.qml FieldFrame.qml Caret.qml ColorPicker.qml PressOutside.qml
     PROPERTIES QT_QML_INTERNAL_TYPE TRUE)
 
 qt_add_library(quiltcontrols STATIC)
@@ -41,6 +41,7 @@ qt_add_qml_module(quiltcontrols
         Expression.qml
         ValueEdit.qml
         FieldFrame.qml
+        Caret.qml
         PressOutside.qml
         ColorPicker.qml
         ColorHistory.qml

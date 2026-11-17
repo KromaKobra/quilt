@@ -126,25 +126,20 @@ T.Control {
     }
 
     contentItem: Item {
-        // Track
-        Rectangle {
+        // The track, filled from the start of the range to the thumb
+        Track {
             id: track
             x: control.horizontal ? 0 : Math.round((parent.width - width) / 2)
             y: control.horizontal ? Math.round((parent.height - height) / 2) : 0
             width: control.horizontal ? parent.width : 4
             height: control.horizontal ? 4 : parent.height
-            radius: 2
-            color: Theme.controlFill
-
-            // Filled part, from the start of the range to the thumb
-            Rectangle {
-                visible: !edit.mixed
-                y: control.horizontal ? 0 : parent.height - height
-                width: control.horizontal ? thumb.x + thumb.width / 2 : parent.width
-                height: control.horizontal ? parent.height : parent.height - thumb.y - thumb.height / 2
-                radius: 2
-                color: edit.driven ? Theme.driven : Theme.accent
-            }
+            horizontal: control.horizontal
+            position: control.position
+            inset: control._thumb / 2
+            mixed: edit.mixed
+            driven: edit.driven
+            hovered: mouse.containsMouse
+            pressed: mouse.pressed
         }
 
         // Tick at the default value
@@ -160,7 +155,7 @@ T.Control {
             z: -1
         }
 
-        Rectangle {
+        Thumb {
             id: thumb
             property real grow: mouse.containsMouse || mouse.pressed ? 2 : 0
             x: (control.horizontal ? control.position * control._travel
@@ -169,11 +164,10 @@ T.Control {
                                    : (1 - control.position) * control._travel) - grow / 2
             width: control._thumb + grow
             height: control._thumb + grow
-            radius: width / 2
             visible: !edit.mixed
-            color: Theme.text
-            border.width: control.visualFocus || mouse.pressed ? 2 : 0
-            border.color: Theme.accent
+            hovered: mouse.containsMouse
+            pressed: mouse.pressed
+            focused: control.visualFocus
             Behavior on grow { NumberAnimation { duration: Theme.durationFast } }
         }
     }

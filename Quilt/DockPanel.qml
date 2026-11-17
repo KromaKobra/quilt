@@ -1,4 +1,5 @@
 import QtQuick
+import Quilt.Style
 
 // One dockable panel. Its children are the panel's content and fill it:
 //
@@ -38,7 +39,7 @@ Item {
 
     // Fill behind the content. Set "transparent" to let whatever is behind
     // the dock area show through.
-    property color background: _manager && _manager.style ? _manager.style.panel : "#1e2127"
+    property color background: _manager && _manager.style ? _manager.style.panel : Theme.surface
 
     // State (read-only for applications)
     readonly property bool isOpen: _area !== null

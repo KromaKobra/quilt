@@ -47,9 +47,11 @@ Item {
     implicitWidth: leftSide.width + rightSide.width + 120
     implicitHeight: Theme.titleBarHeight
 
-    Rectangle {
+    Surface {
         anchors.fill: parent
-        color: bar.color
+        slot: "bar"
+        fill: bar.color
+        active: !!bar.window && bar.window.active
     }
 
     // The bar itself: drag to move, double-click to maximize.
@@ -76,8 +78,10 @@ Item {
         text: bar.title
         elide: Text.ElideRight
         color: bar.window && bar.window.active ? Theme.textSecondary : Theme.textTertiary
-        font.family: Theme.fontFamily
+        font.family: Theme.fontFamilyTitle
         font.pixelSize: Theme.fontSize
+        font.capitalization: Theme.titleCapitalization
+        font.letterSpacing: Theme.titleLetterSpacing
         renderType: Theme.textRenderType
     }
 
@@ -166,9 +170,12 @@ Item {
         Accessible.name: tip
         Accessible.onPressAction: clicked()
 
-        Rectangle {
+        Face {
             anchors.fill: parent
-            color: button.danger ? Theme.danger : Theme.controlHover
+            role: Face.Tool
+            radius: 0
+            hovered: buttonHover.hovered
+            danger: button.danger
             opacity: tap.pressed ? 0.8 : 1
             visible: buttonHover.hovered
         }
@@ -177,7 +184,7 @@ Item {
             name: button.glyph
             size: 10
             strokeWidth: 1.2
-            color: buttonHover.hovered ? (button.danger ? "white" : Theme.text) : Theme.textSecondary
+            color: buttonHover.hovered ? (button.danger ? Theme.dangerInk : Theme.text) : Theme.textSecondary
         }
         HoverHandler { id: buttonHover }
         TapHandler {

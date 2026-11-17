@@ -300,7 +300,7 @@ Item {
             target: flick
             property: "contentY"
             duration: Theme.duration
-            easing.type: Easing.OutCubic
+            easing.type: Theme.easing
         }
 
         // A focused control that wants the wheel takes it before we see it.
@@ -418,11 +418,11 @@ Item {
             inspector.labelWidth = Math.round(Math.min(inspector.width - Theme.gutter - 72, Math.max(48, x)));
         }
         onDoubleClicked: inspector.labelWidth = Qt.binding(() => inspector._autoLabelWidth)
-        Rectangle {
+        Rule {
             x: 3
             width: 1
             height: parent.height
-            color: divider.pressed ? Theme.accent : Theme.border
+            ink: divider.pressed ? Theme.accent : Theme.border
             visible: divider.containsMouse || divider.pressed
         }
     }

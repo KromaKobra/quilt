@@ -125,6 +125,19 @@ Item {
             compare(area.activePanel, area.panel("uv"));
         }
 
+        function test_tab_menu_is_made_on_first_use() {
+            const s = area._stackItems[stackOf("viewport").id];
+            compare(s._tabMenu, null);                  // nothing until it's asked for
+            mouseClick(s, s.tabInsertX(1) + 12, area.style.tabHeight / 2, Qt.RightButton);
+            verify(s._tabMenu);
+            tryVerify(() => s._tabMenu.opened);
+            compare(s._tabMenu.panelId, "uv");
+            compare(s._tabMenu.count, 4);
+            s._tabMenu.itemAt(3).triggered();          // Close
+            verify(!area.panel("uv").isOpen);
+            tryVerify(() => !s._tabMenu.visible);
+        }
+
         function test_resize_handle_respects_minimums() {
             const row = area.root.children[0];
             const h = area.geometry.handles[row.id + ":0"];

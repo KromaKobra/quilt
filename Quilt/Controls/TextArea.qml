@@ -105,6 +105,7 @@ T.Control {
             padding: 0
             wrapMode: TextEdit.Wrap
             selectByMouse: true
+            cursorDelegate: Theme._ownCaret ? caret : null
             Accessible.name: control.Accessible.name
             Accessible.description: edit.stateText
             color: !control.enabled ? Theme.textTertiary
@@ -179,4 +180,6 @@ T.Control {
     }
 
     ValueEdit { id: edit; owner: control; name: "text"; fallback: ""; live: control.live }
+
+    Component { id: caret; Caret { } }
 }

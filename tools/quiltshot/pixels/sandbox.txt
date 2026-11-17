@@ -1,0 +1,17 @@
+# Pixel baseline for examples/sandbox.qml: the dock chrome at rest and with
+# the pointer over a tab strip, in both themes. Run by pixel-check.sh.
+eval uptime.running = false
+wait 200
+shot @OUT@/sandbox-dark.png
+move 700 51
+wait 250
+shot @OUT@/sandbox-dark-strip-hover.png
+move 1260 500
+wait 250
+eval Theme.dark = false
+wait 250
+shot @OUT@/sandbox-light.png
+move 700 51
+wait 250
+shot @OUT@/sandbox-light-strip-hover.png
+eval Theme.dark = true

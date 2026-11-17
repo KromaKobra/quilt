@@ -85,6 +85,7 @@ You need Qt 6.8 or newer (developed against 6.12). From the repository root:
 qml6 -I . examples/minimal.qml      # four panels and a small inspector
 qml6 -I . examples/gallery.qml      # every control, in every state
 qml6 -I . examples/sandbox.qml      # a small editor: docking, linked values, multi-selection, undo
+qml6 -I . examples/try-theme.qml    # the gallery under a theme you edit
 ./run-tests.sh                      # lint + the headless test suite
 ```
 
@@ -97,6 +98,7 @@ The `qml` runtime may be called `qml6` or `qml`, or it may only exist in Qt's bi
 | [Docking guide](docs/integration.md) | Adding Quilt to your app; panels, layouts, restrictions, persistence, pop-out windows, styling; docking API reference |
 | [Controls guide](docs/controls-guide.md) | Controls, the property grid, undo, parameter states and objects, the generated inspector, `Quilt.Params`, the title bar, theming; controls API reference |
 | [Architecture](docs/architecture.md) | How it works: the layout tree, re-parenting, drag and drop, windows, persistence, the value plumbing, the parameter engine |
+| [Trying themes and layouts](docs/try-themes-and-layouts.md) | What to run, click and edit to see Quilt in another look or another panel layout; writing a theme and its painters |
 | [Testing](docs/testing.md) | Running the QML directly, the automated tests, headless screenshots, the manual checklist |
 | [Scope](docs/scope.md) | What Quilt is, what it will never be, and the contracts between controls and your app |
 | [Controls design](docs/controls.md) | The interaction grammar and how each control behaves, and why |
@@ -116,7 +118,7 @@ Quilt/                the modules: copy this folder into your project
   Controls/             Quilt.Controls: the controls, the property grid, the title bar
   Params/               Quilt.Params: Parameter, ParameterSet, MergedParameter
   CMakeLists.txt        optional: build the modules into your binary
-examples/             minimal.qml, gallery.qml, sandbox.qml, cpp-host/ (CMake + C++ app)
+examples/             minimal.qml, gallery.qml, sandbox.qml, try-theme.qml, cpp-host/ (CMake + C++ app)
 tests/                QtQuick.Test suites (run headless)
 docs/                 the documentation above
 run-tests.sh          lint + tests

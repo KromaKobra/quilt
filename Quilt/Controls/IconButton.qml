@@ -25,7 +25,10 @@ T.AbstractButton {
     onToggled: Qt.callLater(rebind.refresh)
     Rebind { id: rebind; target: control; property: "checked" }
 
+    Translate { id: travel; y: control.down ? Theme.pressTravel : 0 }
+
     contentItem: Item {
+        transform: travel
         Icon {
             anchors.centerIn: parent
             name: control.iconName
@@ -35,21 +38,14 @@ T.AbstractButton {
         }
     }
 
-    background: Rectangle {
-        radius: Theme.controlRadius
-        color: control.down || control.checked ? Theme.controlFill
-             : control.hovered ? Theme.controlHover : "transparent"
-
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: -1
-            radius: parent.radius + 1
-            color: "transparent"
-            border.width: Theme.focusWidth
-            border.pixelAligned: false
-            border.color: Theme.accent
-            visible: control.visualFocus
-        }
+    background: Face {
+        transform: travel
+        role: Face.Tool
+        hovered: control.hovered
+        pressed: control.down
+        checked: control.checked
+        focused: control.visualFocus
+        focusRing: true
     }
 
     Tip { text: control.tip; shown: control.hovered; pressed: control.down }

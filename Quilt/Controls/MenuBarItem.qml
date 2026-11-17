@@ -24,9 +24,8 @@ T.MenuBarItem {
         horizontalAlignment: Text.AlignHCenter
     }
 
-    background: Rectangle {
-        implicitHeight: Theme.controlHeight
-        radius: Theme.controlRadius
-        color: control.down || control.highlighted ? Theme.controlHover : "transparent"
+    background: Face {
+        role: Face.Tool
+        hovered: control.down || control.highlighted
     }
 }

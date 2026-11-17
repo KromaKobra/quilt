@@ -57,38 +57,18 @@ T.Switch {
             edit.instant(control.checked);
     }
 
-    indicator: Rectangle {
-        readonly property bool on: control.checked && !edit.mixed
+    indicator: SwitchIndicator {
         x: control.leftPadding
         y: Math.round((control.height - height) / 2)
         width: 26
         height: 14
-        radius: 7
-        color: on ? (edit.driven ? Theme.driven : Theme.accent)
-                  : control.hovered ? Theme.mix(Theme.controlFill, Theme.text, 0.1) : Theme.controlFill
-        Behavior on color { ColorAnimation { duration: Theme.durationFast } }
-
-        Rectangle {
-            readonly property real travel: parent.width - width - 4
-            x: 2 + (edit.mixed ? 0.5 : control.visualPosition) * travel
-            y: 2
-            width: 10
-            height: 10
-            radius: 5
-            color: parent.on ? Theme.accentInk : Theme.textSecondary
-            Behavior on x { enabled: !control.down; NumberAnimation { duration: Theme.duration; easing.type: Easing.OutCubic } }
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: -2.5
-            radius: parent.radius + 2.5
-            color: "transparent"
-            border.width: Theme.focusWidth
-            border.pixelAligned: false
-            border.color: Theme.accent
-            visible: control.visualFocus
-        }
+        on: control.checked && !edit.mixed
+        mixed: edit.mixed
+        driven: edit.driven
+        hovered: control.hovered
+        pressed: control.down
+        focused: control.visualFocus
+        position: control.visualPosition
     }
 
     contentItem: Text {
